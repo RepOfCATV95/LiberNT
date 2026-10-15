@@ -280,8 +280,12 @@ NTAPI
 DisplayShutdownBitmap(VOID)
 {
     PUCHAR Logo1, Logo2;
+    UCHAR PBColor;
     VID_DISPLAY_INFO DisplayInfo;
     ULONG CanvasLeft, CanvasTop;
+
+    /* Assign a color */
+    PBColor = BV_COLOR_DARK_GRAY;
 
     InbvQueryDisplayInfo(&DisplayInfo);
     CanvasLeft = (DisplayInfo.Width - SCREEN_WIDTH) / 2;
@@ -291,12 +295,21 @@ DisplayShutdownBitmap(VOID)
     // InbvResetDisplay();
     InbvInstallDisplayStringFilter(NULL);
     InbvEnableDisplayString(TRUE);
-    InbvSolidColorFill(0, 0, DisplayInfo.Width - 1, DisplayInfo.Height - 1, BV_COLOR_BLACK);
+    InbvSolidColorFill(0, 0, DisplayInfo.Width - 1, DisplayInfo.Height - 1, PBColor);
     InbvSetScrollRegion(0, 0, DisplayInfo.Width - 1, DisplayInfo.Height - 1);
 
     /* Display shutdown logo and message */
     Logo1 = InbvGetResourceAddress(IDB_SHUTDOWN_MSG);
-    Logo2 = InbvGetResourceAddress(IDB_LOGO_DEFAULT);
+    if (SharedUserData->NtProductType == NtProductWinNt)
+    {
+        /* Professional */
+        Logo2 = InbvGetResourceAddress(IDB_SHUTDOWN_LOGO_PRO);
+    }
+    else
+    {
+        /* Server */
+        Logo2 = InbvGetResourceAddress(IDB_SHUTDOWN_LOGO_SERVER);
+    }
 
     if (Logo1 && Logo2)
     {

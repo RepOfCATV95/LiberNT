@@ -16,9 +16,10 @@
 
 #pragma once
 
-#define IDB_BOOT_SCREEN     1
-#define IDB_SHUTDOWN_MSG    3
-#define IDB_LOGO_DEFAULT    5
+#define IDB_BOOT_SCREEN          1
+#define IDB_SHUTDOWN_MSG         3
+#define IDB_SHUTDOWN_LOGO_PRO    5
+#define IDB_SHUTDOWN_LOGO_SERVER 6
 
 /* Workstation editions Overlays */
 #define IDB_TEXT_PROF       10  // Professional

@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "logo_root.h"
+
 /* Shared bitmap structures used by bootanim.c and inbvgop.c */
 typedef struct tagRGBQUAD
 {
@@ -36,12 +38,11 @@ typedef struct tagBITMAPINFOHEADER
 //
 
 /* 16px space between shutdown logo and message */
-#define VID_SHUTDOWN_LOGO_LEFT    225
-#define VID_SHUTDOWN_LOGO_TOP     114
-#define VID_SHUTDOWN_MSG_LEFT     213
-#define VID_SHUTDOWN_MSG_TOP      354
-
-
+/* Use 156x186x153x166 for displaying fake window-based safe to shutdown screens */
+#define VID_SHUTDOWN_LOGO_LEFT    156
+#define VID_SHUTDOWN_LOGO_TOP     186
+#define VID_SHUTDOWN_MSG_LEFT     153
+#define VID_SHUTDOWN_MSG_TOP      166
 
 //
 // Boot Splash-Screen Functions
