@@ -1393,12 +1393,19 @@ KiDisplayBlueScreen(IN ULONG MessageId,
         if (HardErrMessage) InbvDisplayString(HardErrMessage);
     }
 
-    /* Begin the display */
+    /* Begin the display by adding extra line */
     InbvDisplayString("\r\n");
 
-    /* Print out initial message */
-    KeGetBugMessageText(BUGCHECK_MESSAGE_INTRO, NULL);
-    InbvDisplayString("\r\n\r\n");
+    /* Show STOP error information */
+    RtlStringCbPrintfA(AnsiName,
+                       sizeof(AnsiName),
+                       "*** STOP: 0x%08lX (0x%p,0x%p,0x%p,0x%p)\r\n",
+                       (ULONG)KiBugCheckData[0],
+                       (PVOID)KiBugCheckData[1],
+                       (PVOID)KiBugCheckData[2],
+                       (PVOID)KiBugCheckData[3],
+                       (PVOID)KiBugCheckData[4]);
+    InbvDisplayString(AnsiName);
 
     /* Check if we have a driver */
     if (KiBugCheckDriver)
@@ -1420,29 +1427,6 @@ KiDisplayBlueScreen(IN ULONG MessageId,
         KeGetBugMessageText(BugCheckCode, NULL);
         InbvDisplayString("\r\n\r\n");
     }
-
-    /* The legacy restart, BIOS, and Safe Mode advice wastes the crash screen. */
-    InbvDisplayString("\r\n");
-
-    /* Print message for technical information */
-    KeGetBugMessageText(BUGCHECK_TECH_INFO, NULL);
-
-    /* Show the technical Data */
-    RtlStringCbPrintfA(AnsiName,
-                       sizeof(AnsiName),
-                       "\r\n\r\n*** STOP: 0x%08lX (0x%p,0x%p,0x%p,0x%p)\r\n\r\n",
-                       BugCheckCode,
-                       (PVOID)KiBugCheckData[1],
-                       (PVOID)KiBugCheckData[2],
-                       (PVOID)KiBugCheckData[3],
-                       (PVOID)KiBugCheckData[4]);
-    KiDisplayAndLogBugCheckString(AnsiName);
-
-    KiDisplayBugCheckRegisters(TrapFrame, Context);
-    KiDisplayBugCheckBackTrace(TrapFrame, Context);
-#ifndef _WINKD_
-    KiDisplayBugCheckTransport();
-#endif
 }
 
 DECLSPEC_NORETURN
