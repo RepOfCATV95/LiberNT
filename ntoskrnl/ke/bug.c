@@ -1427,6 +1427,12 @@ KiDisplayBlueScreen(IN ULONG MessageId,
         KeGetBugMessageText(BugCheckCode, NULL);
         InbvDisplayString("\r\n\r\n");
     }
+    
+    KiDisplayBugCheckRegisters(TrapFrame, Context);
+    KiDisplayBugCheckBackTrace(TrapFrame, Context);
+#ifndef _WINKD_
+    KiDisplayBugCheckTransport();
+#endif
 }
 
 DECLSPEC_NORETURN
