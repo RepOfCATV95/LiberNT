@@ -5,17 +5,18 @@
  * COPYRIGHT:   Copyright 2007-2010 Alex Ionescu (alex.ionescu@reactos.org)
  *              Copyright 2015-2022 Hermès Bélusca-Maïto
  *              Copyright 2019 Yaroslav Kibysh
+ *              Copyright 1997-2028 Republic of CATV 95 (catv95republic@proton.me)
  */
 
 #include "include/resource.h"
 
 /* Bitmaps */
+#if defined(_M_AMD64) || defined(_M_X64) || defined(_M_ARM64)
+#include "btani64.rc"
+#else
+#include "btani32.rc"
+#endif
 
-IDB_SHUTDOWN_MSG         BITMAP "inbv/resources/catv95shtdwn.bmp"
-IDB_SHUTDOWN_LOGO_PRO    BITMAP "inbv/resources/catv95logoprofessional.bmp"
-IDB_SHUTDOWN_LOGO_SERVER BITMAP "inbv/resources/catv95logoserver.bmp"
-IDB_LOGO_DEFAULT         BITMAP "inbv/resources/logo.bmp"
-
-/* ReactOS additions */
-IDB_COPYRIGHT            BITMAP "inbv/resources/copyright.bmp"
-IDB_REACTOS_GOP_LOGO     BITMAP "inbv/resources/reactos_logo.bmp"
+IDB_BOOT_SCREEN_NATIONAL_GEOGRAPHIC  BITMAP  "inbv/resources/bootroslh.bmp"
+IDB_BAR_DEFAULT                      BITMAP  "inbv/resources/barwkstalh.bmp"
+IDB_REACTOS_GOP_LOGO                 BITMAP  "inbv/resources/reactos_logo.bmp"

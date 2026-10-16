@@ -101,7 +101,7 @@ InbvScreenToBufferBlt(
 
 VOID
 NTAPI
-InbvIndicateProgress(VOID);
+InbvGopIndicateProgress(VOID);
 
 //
 // Headless Terminal Support Functions

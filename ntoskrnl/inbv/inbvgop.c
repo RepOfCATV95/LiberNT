@@ -13,6 +13,8 @@
 #include "resource.h"
 #include "inbvgop.h"
 
+extern BOOLEAN ShowProgressBar;
+extern BOOLEAN Win2KHaxor;
 
 #ifndef BI_RGB
 #define BI_RGB 0
@@ -511,7 +513,7 @@ InbvGopLogoStart(
 
 VOID
 NTAPI
-InbvIndicateProgress(VOID)
+InbvGopIndicateProgress(VOID)
 {
     LONG Old, New;
 
@@ -824,6 +826,7 @@ InbvGopHandleBootBitmap(VOID)
         VidDisplayStringXY(LoadingMsg, x, y, TRUE);
     }
 
+    ShowProgressBar = FALSE;
     InbvEnableDisplayString(FALSE);
     return TRUE;
 }

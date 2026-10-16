@@ -1,0 +1,22 @@
+/*
+ * PROJECT:     ReactOS Kernel
+ * LICENSE:     GPL-2.0-or-later (https://spdx.org/licenses/GPL-2.0-or-later)
+ * PURPOSE:     Boot Theme & Animation For 64-Bit CATV 95 OS - Resource File
+ * COPYRIGHT:   Copyright 2007-2010 Alex Ionescu (alex.ionescu@reactos.org)
+ *              Copyright 2015-2022 Hermès Bélusca-Maïto
+ *              Copyright 2019 Yaroslav Kibysh
+ *              Copyright 1997-2028 Republic of CATV 95 (catv95republic@proton.me)
+ */
+
+#include "include/resource.h"
+
+/* Bitmaps */
+IDB_BOOT_SCREEN           BITMAP    "inbv/resources/catv95professional64.bmp"
+IDB_HIBERNATE_BAR         BITMAP    "inbv/resources/catv95hiber.bmp"
+IDB_SHUTDOWN_MSG          BITMAP    "inbv/resources/catv95shtdwn.bmp"
+IDB_BOOT_SCREEN_SERVER    BITMAP    "inbv/resources/catv95srv64.bmp"
+IDB_SHUTDOWN_LOGO_PRO     BITMAP    "inbv/resources/catv95logoprofessional.bmp"
+IDB_SHUTDOWN_LOGO_SERVER  BITMAP    "inbv/resources/catv95logoserver.bmp"
+IDB_PROFESSIONAL_HEADER   BITMAP    "inbv/resources/catv95autochkpro64bit.bmp"
+IDB_SERVER_HEADER         BITMAP    "inbv/resources/catv95autochkserver64bit.bmp"
+IDB_BOOT_SCREEN_POWERED   BITMAP    "inbv/resources/catv95powered64.bmp"
