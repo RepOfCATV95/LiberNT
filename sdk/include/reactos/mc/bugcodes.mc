@@ -19,9 +19,7 @@ Severity=Informational
 Facility=System
 SymbolicName=WINDOWS_NT_BANNER
 Language=English
-Republic of CATV 95 (LiberNT Version %s)
-Build %s
-Reporting NT %s (Build %u%s)
+Republic of CATV 95 (R) Version %hs (Build %u%hs)
 .
 
 MessageId=0x87

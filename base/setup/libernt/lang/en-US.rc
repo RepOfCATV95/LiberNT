@@ -4,7 +4,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 
 IDD_SETUPFRAME DIALOGEX 0, 0, 420, 240
 STYLE DS_SHELLFONT | DS_MODALFRAME | WS_MINIMIZEBOX | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
-CAPTION "LiberNT Setup"
+CAPTION "Republic of CATV 95 Setup"
 FONT 8, "MS Shell Dlg"
 BEGIN
     LTEXT "", IDC_FRAME_TITLE, 120, 10, 290, 14, SS_NOPREFIX
@@ -78,7 +78,7 @@ BEGIN
     LTEXT "&Time zone:", IDC_STATIC, 0, 88, 95, 9
     COMBOBOX IDC_TIMEZONELIST, 100, 86, 190, 120, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     AUTOCHECKBOX "Adjust for &daylight saving time automatically", IDC_AUTODAYLIGHT, 100, 105, 190, 10, WS_TABSTOP
-    LTEXT "This account is a member of the Administrators group. If you leave the password empty, LiberNT signs in to it automatically.", IDC_STATIC, 0, 128, 290, 26
+    LTEXT "This account is a member of the Administrators group. If you leave the password empty, CATV 95 LiberNT signs in to it automatically.", IDC_STATIC, 0, 128, 290, 26
 END
 
 IDD_READYPAGE DIALOGEX 0, 0, 290, 160
@@ -146,7 +146,7 @@ BEGIN
     IDS_EXTEND_BUTTON "E&xtend"
     IDS_RESIZE_PENDING "Partition changes are waiting to be applied. Shrink and extend take effect immediately, so do them before creating, deleting or formatting partitions."
     IDS_RESIZE_FAILED "The partition could not be resized."
-    IDS_CAPTION "LiberNT Setup"
+    IDS_CAPTION "Republic of CATV 95 Setup"
     IDS_DRIVETITLE "Where do you want to install LiberNT?"
     IDS_PROCESSTITLE "Installing LiberNT"
     IDS_PROCESSSUBTITLE "Setup prepares the disk, copies the files, configures LiberNT and installs the bootloader. This can take a few minutes."
