@@ -20,6 +20,7 @@
 #define IDB_SHUTDOWN_MSG         3
 #define IDB_SHUTDOWN_LOGO_PRO    5
 #define IDB_SHUTDOWN_LOGO_SERVER 6
+#define IDB_LOGO_DEFAULT         7
 
 /* Workstation editions Overlays */
 #define IDB_TEXT_PROF       10  // Professional

@@ -14,6 +14,7 @@
 IDB_SHUTDOWN_MSG         BITMAP "inbv/resources/catv95shtdwn.bmp"
 IDB_SHUTDOWN_LOGO_PRO    BITMAP "inbv/resources/catv95logoprofessional.bmp"
 IDB_SHUTDOWN_LOGO_SERVER BITMAP "inbv/resources/catv95logoserver.bmp"
+IDB_LOGO_DEFAULT         BITMAP "inbv/resources/logo.bmp"
 
 /* ReactOS additions */
 IDB_COPYRIGHT            BITMAP "inbv/resources/copyright.bmp"
