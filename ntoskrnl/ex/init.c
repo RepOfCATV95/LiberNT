@@ -47,7 +47,9 @@ ExArchPostHalInitSystemPhase1(VOID);
 typedef struct _INIT_BUFFER
 {
     WCHAR DebugBuffer[256];
+    CHAR VersionBuffer[256];
     CHAR BootlogHeader[256];
+    CHAR VersionNumber[24];
     RTL_USER_PROCESS_INFORMATION ProcessInfo;
     WCHAR RegistryBuffer[256];
 } INIT_BUFFER, *PINIT_BUFFER;

@@ -17,6 +17,5 @@
 #include "btani32.rc"
 #endif
 
-IDB_BOOT_SCREEN_NATIONAL_GEOGRAPHIC  BITMAP  "inbv/resources/bootroslh.bmp"
-IDB_BAR_DEFAULT                      BITMAP  "inbv/resources/barwkstalh.bmp"
 IDB_REACTOS_GOP_LOGO                 BITMAP  "inbv/resources/reactos_logo.bmp"
+

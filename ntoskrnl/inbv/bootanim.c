@@ -83,156 +83,8 @@ static BOOLEAN Haxor = FALSE;
 
 /* RGBQUAD and BITMAPINFOHEADER are now defined in logo.h */
 
-static RGBQUAD MainPalette[16];
-
 #define PALETTE_FADE_STEPS  12
 #define PALETTE_FADE_TIME   (15 * 1000) /* 15 ms */
-
-static VOID
-BootLogoFadeIn(VOID)
-{
-    UCHAR PaletteBitmapBuffer[sizeof(BITMAPINFOHEADER) + sizeof(MainPalette)];
-    PBITMAPINFOHEADER PaletteBitmap = (PBITMAPINFOHEADER)PaletteBitmapBuffer;
-    LPRGBQUAD Palette = (LPRGBQUAD)(PaletteBitmapBuffer + sizeof(BITMAPINFOHEADER));
-    ULONG Iteration, Index, ClrUsed;
-
-    LARGE_INTEGER Delay;
-    Delay.QuadPart = -(PALETTE_FADE_TIME * 10);
-
-    /* Check if we are installed and we own the display */
-    if (!InbvBootDriverInstalled ||
-        (InbvGetDisplayState() != INBV_DISPLAY_STATE_OWNED))
-    {
-        return;
-    }
-
-    /*
-     * Build a bitmap containing the fade-in palette. The palette entries
-     * are then processed in a loop and set using VidBitBlt function.
-     */
-    ClrUsed = RTL_NUMBER_OF(MainPalette);
-    RtlZeroMemory(PaletteBitmap, sizeof(BITMAPINFOHEADER));
-    PaletteBitmap->biSize = sizeof(BITMAPINFOHEADER);
-    PaletteBitmap->biBitCount = 4;
-    PaletteBitmap->biClrUsed = ClrUsed;
-
-    /*
-     * Main animation loop.
-     */
-    for (Iteration = 0; Iteration <= PALETTE_FADE_STEPS; ++Iteration)
-    {
-        for (Index = 0; Index < ClrUsed; Index++)
-        {
-            Palette[Index].rgbRed = (UCHAR)
-                (MainPalette[Index].rgbRed * Iteration / PALETTE_FADE_STEPS);
-            Palette[Index].rgbGreen = (UCHAR)
-                (MainPalette[Index].rgbGreen * Iteration / PALETTE_FADE_STEPS);
-            Palette[Index].rgbBlue = (UCHAR)
-                (MainPalette[Index].rgbBlue * Iteration / PALETTE_FADE_STEPS);
-        }
-
-        /* Do the animation */
-        InbvAcquireLock();
-        VidBitBlt(PaletteBitmapBuffer, 0, 0);
-        InbvReleaseLock();
-
-        /* Wait for a bit */
-        KeDelayExecutionThread(KernelMode, FALSE, &Delay);
-    }
-}
-
-static VOID
-BitBltPalette(
-    IN PVOID Image,
-    IN BOOLEAN NoPalette,
-    IN ULONG X,
-    IN ULONG Y)
-{
-    LPRGBQUAD Palette;
-    RGBQUAD OrigPalette[RTL_NUMBER_OF(MainPalette)];
-
-    /* If requested, remove the palette from the image */
-    if (NoPalette)
-    {
-        /* Get bitmap header and palette */
-        PBITMAPINFOHEADER BitmapInfoHeader = Image;
-        Palette = (LPRGBQUAD)((PUCHAR)Image + BitmapInfoHeader->biSize);
-
-        /* Save the image original palette and remove palette information */
-        RtlCopyMemory(OrigPalette, Palette, sizeof(OrigPalette));
-        RtlZeroMemory(Palette, sizeof(OrigPalette));
-    }
-
-    /* Draw the image */
-    InbvBitBlt(Image, X, Y);
-
-    /* Restore the image original palette */
-    if (NoPalette)
-    {
-        RtlCopyMemory(Palette, OrigPalette, sizeof(OrigPalette));
-    }
-}
-
-static VOID
-BitBltAligned(
-    IN PVOID Image,
-    IN BOOLEAN NoPalette,
-    IN BBLT_HORZ_ALIGNMENT HorizontalAlignment,
-    IN BBLT_VERT_ALIGNMENT VerticalAlignment,
-    IN ULONG MarginLeft,
-    IN ULONG MarginTop,
-    IN ULONG MarginRight,
-    IN ULONG MarginBottom)
-{
-    PBITMAPINFOHEADER BitmapInfoHeader = Image;
-    VID_DISPLAY_INFO DisplayInfo;
-    ULONG X, Y;
-
-    InbvQueryDisplayInfo(&DisplayInfo);
-
-    /* Calculate X */
-    switch (HorizontalAlignment)
-    {
-        case AL_HORIZONTAL_LEFT:
-            X = MarginLeft - MarginRight;
-            break;
-
-        case AL_HORIZONTAL_CENTER:
-            X = MarginLeft - MarginRight + (DisplayInfo.Width - BitmapInfoHeader->biWidth + 1) / 2;
-            break;
-
-        case AL_HORIZONTAL_RIGHT:
-            X = MarginLeft - MarginRight + DisplayInfo.Width - BitmapInfoHeader->biWidth;
-            break;
-
-        default:
-            /* Unknown */
-            return;
-    }
-
-    /* Calculate Y */
-    switch (VerticalAlignment)
-    {
-        case AL_VERTICAL_TOP:
-            Y = MarginTop - MarginBottom;
-            break;
-
-        case AL_VERTICAL_CENTER:
-            Y = MarginTop - MarginBottom + (DisplayInfo.Height - BitmapInfoHeader->biHeight + 1) / 2;
-            break;
-
-        case AL_VERTICAL_BOTTOM:
-            Y = MarginTop - MarginBottom + DisplayInfo.Height - BitmapInfoHeader->biHeight;
-            break;
-
-        default:
-            /* Unknown */
-            return;
-    }
-
-    /* Finally draw the image */
-    BitBltPalette(Image, NoPalette, X, Y);
-}
 
 /* FUNCTIONS *****************************************************************/
 
@@ -388,7 +240,7 @@ DrawProgressBars(
         {
             VidSolidColorFill(ProgressBarLeft + (i * VID_PROGRESS_BAR_EXTRA_WIDTH),
                               ProgressBarTop,
-                              ProgressBarLeft + ((i + 1) * VID_PROGRESS_EXTRA_WIDTH) - 2,
+                              ProgressBarLeft + ((i + 1) * VID_PROGRESS_BAR_EXTRA_WIDTH) - 2,
                               ProgressBarTop + VID_PROGRESS_BAR_GEN_HEIGHT,
                               PBColor);
             i+=1;
@@ -532,23 +384,22 @@ DisplayFilter(
          * If Windows 8+ GOP-styled boot screen is shown in NT6+ builds without BOOTVID fallback, then
          * halt the boot animation, change logo type to Windows 2000 and do the rest before entering an AUTOCHK (text-mode) screen
          */
-		if ( LogoSelections == LOGO_GUTLAY )
-		{
-			LogoSelections = LOGO_PETRO;
-		}
+        if ( LogoSelections == LOGO_GUTLAY )
+        {
+            LogoSelections = LOGO_PETRO;
+        }
 #endif
 
 		/* Avoid drawing progress bar while in process of entering text-mode boot screen */
-		if ( !BootSeqEntered && !Win2KHaxor )
-			BootSeqEntered = TRUE;
+        if ( !BootSeqEntered && !Win2KHaxor )
+            BootSeqEntered = TRUE;
 
         /* If ReactOS 0.2.x boot screen is shown in Embedded edition or RISC-V version of CATV 95 LiberNT, then clear the flag first */
 		if ( Haxor )
-			Haxor = FALSE;
+            Haxor = FALSE;
 
         /* Stop the DPC timer before entering AUTOCHK boot screen */
-		if ( BootAnimTimer )
-            KeCancelTimer(&BootAnimTimer);
+        KeCancelTimer(&BootAnimTimer);
 		
 		/* Draw text screen */
 		DisplayBootBitmap(TRUE);
@@ -635,10 +486,10 @@ DisplayBootBitmap(
 #ifdef INBV_ROTBAR_IMPLEMENTED
         /* Set the boot-time animation offsets */
         AnimBasePosX       =   ROTATION_BAR_TEXTMODE_OFFSET;
-		AnimBasePosY       =   ROTATION_BAR_TEXTMODE_HEIGHT;
-		AnimBaseWidth      =   ROTATION_BAR_TEXTMODE_WIDTH;
-		AnimBaseHeight     =   ROTATION_BAR_TEXTMODE_SIZE;
-		AnimBaseHalfWidth  =   ROTATION_BAR_GEN_HALFER;
+        AnimBasePosY       =   ROTATION_BAR_TEXTMODE_HEIGHT;
+        AnimBaseWidth      =   ROTATION_BAR_TEXTMODE_WIDTH;
+        AnimBaseHeight     =   ROTATION_BAR_TEXTMODE_SIZE;
+        AnimBaseHalfWidth  =   ROTATION_BAR_GEN_HALFER;
 #endif
 
         /* Draw four blocks of color representing the progress bar if kernel transitions directly into a verbose (AUTOCHK) boot screen */
@@ -735,7 +586,7 @@ DisplayBootBitmap(
 	KeInitializeDpc(&BootAnimDpc, InbvRotationThread, NULL);
 	KeInitializeTimer(&BootAnimTimer);
 	BootAnimBaseTimer.QuadPart = 50 * 10000LL;
-	KeSetTimerEx(&BootAnimTimer, BootAnimBaseTimer, &BootAnimDpc);
+	KeSetTimerEx(&BootAnimTimer, BootAnimBaseTimer, 50, &BootAnimDpc);
 #endif
     if ( !BootSeqEntered && FirstCall )
     {

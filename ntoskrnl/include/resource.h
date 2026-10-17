@@ -24,5 +24,6 @@
 #define IDB_REACTOS_GOP_LOGO                   12
 #define IDB_MAX_RESOURCES           IDB_REACTOS_GOP_LOGO
 #else
-#define IDB_MAX_RESOURCES           IDB_BOOT_SCREEN_POWERED
+#define IDB_REACTOS_GOP_LOGO                   10 // TEMPORARY!
+#define IDB_MAX_RESOURCES           IDB_REACTOS_GOP_LOGO
 #endif
