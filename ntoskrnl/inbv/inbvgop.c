@@ -13,6 +13,8 @@
 #include "resource.h"
 #include "inbvgop.h"
 
+extern BOOLEAN ShowProgressBar;
+extern BOOLEAN Win2KHaxor;
 
 #ifndef BI_RGB
 #define BI_RGB 0
@@ -743,7 +745,7 @@ InbvGopLogoStart(
 
 VOID
 NTAPI
-InbvIndicateProgress(VOID)
+InbvGopIndicateProgress(VOID)
 {
     LONG Old, New;
 
@@ -1248,7 +1250,7 @@ InbvGopHandleBootBitmap(VOID)
     ULONG Width, Height;
     BOOLEAN WordmarkDrawn;
 
-    if (!InbvGopQueryInfo(&FbInfo))
+    if (!InbvGopQueryInfo(&FbInfo) || Win2KHaxor)
         return FALSE;
 
     /* Native 32-bit blits use physical dimensions after rotation. */
@@ -1279,6 +1281,7 @@ InbvGopHandleBootBitmap(VOID)
         VidDisplayStringXY(LoadingMsg, x, y, TRUE);
     }
 
+    ShowProgressBar = FALSE;
     InbvEnableDisplayString(FALSE);
     return TRUE;
 }

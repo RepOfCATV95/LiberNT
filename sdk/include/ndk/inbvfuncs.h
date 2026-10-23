@@ -98,7 +98,7 @@ InbvQueryBootScreen(
 VOID
 NTAPI
 InbvDiscardBootScreen(
-    VOID
+   VOID
 );
 
 BOOLEAN

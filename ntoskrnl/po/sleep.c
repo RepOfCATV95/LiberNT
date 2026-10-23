@@ -55,6 +55,7 @@ static POP_SLEEP_DISABLE PopAoAcDisable;
 volatile LONG64 PopLastSleepTime;
 volatile LONG64 PopLastWakeTime;
 PKWIN32_POWERSTATE_CALLOUT PopStateCallout;
+extern BOOLEAN PopAcpiPresent;
 
 static
 VOID
@@ -769,8 +770,10 @@ Done:
     if (SystemState == PowerSystemHibernate)
     {
         MmCompleteHibernation();
-        PopHiberInvalidate();
-        PopHiberRelease();
+        if ( !PopAcpiPresent )
+            PopHiberFinished(STATUS_DEVICE_DOES_NOT_EXIST);
+        else
+            PopHiberFinished(Status);
     }
 
     PopSleepCallWin32(PowerState_ResumeApps, SystemAction, SystemState, Flags);

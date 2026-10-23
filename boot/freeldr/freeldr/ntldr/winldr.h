@@ -72,6 +72,7 @@ VOID List_PaToVa(_In_ LIST_ENTRY *ListEntry);
 VOID ConvertConfigToVA(PCONFIGURATION_COMPONENT_DATA Start);
 
 // winldr.c
+extern BOOLEAN SosEnabled;
 #ifdef _M_IX86
 extern BOOLEAN PaeModeOn;
 #endif

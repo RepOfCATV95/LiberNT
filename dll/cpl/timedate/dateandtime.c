@@ -71,6 +71,60 @@ SystemSetLocalTime(LPSYSTEMTIME lpSystemTime)
     return Ret;
 }
 
+static
+VOID
+ProcessLocalTime(SYSTEMTIME st)
+{
+    TIME_ZONE_INFORMATION tzi;
+    DWORD dwTZI;
+    SYSTEMTIME procUTC,utcSt,aTime;
+    FILETIME ft;
+    BOOLEAN bFail = FALSE;
+
+    RtlZeroMemory(&procUTC, sizeof(SYSTEMTIME));
+    RtlZeroMemory(&utcSt, sizeof(SYSTEMTIME));
+    RtlZeroMemory(&aTime, sizeof(SYSTEMTIME));
+    RtlZeroMemory(&tzi, sizeof(TIME_ZONE_INFORMATION));
+
+    dwTZI = GetTimeZoneInformation(&tzi);
+    bFail = (dwTZI == TIME_ZONE_ID_UNKNOWN || dwTZI == TIME_ZONE_ID_INVALID);
+    
+    /* If time zone is unknown or invalid, then set it as local time without time zone */
+    if ( bFail )
+    {
+        SystemSetLocalTime(&st);
+        return;
+    }
+    
+    TzSpecificLocalTimeToSystemTime(&tzi, &st, &procUTC);
+    bFail = (!SystemTimeToFileTime(&procUTC, &ft));
+    
+    if ( bFail )
+    {
+        SystemSetLocalTime(&st);
+        return;
+    }
+    
+    bFail = (!FileTimeToSystemTime(&ft, &utcSt));
+    if ( bFail )
+    {
+        SystemSetLocalTime(&st);
+        return;
+    }
+    
+    dwTZI = GetTimeZoneInformation(&tzi);
+    bFail = (dwTZI == TIME_ZONE_ID_UNKNOWN || dwTZI == TIME_ZONE_ID_INVALID);
+    
+    /* If time zone is unknown or invalid, then set it as local time without time zone */
+    if ( bFail )
+    {
+        SystemSetLocalTime(&st);
+        return;
+    }
+    
+    SystemTimeToTzSpecificLocalTime(&tzi,&utcSt,&aTime);
+    SystemSetLocalTime(&aTime);
+}
 
 static VOID
 SetLocalSystemTime(HWND hwnd)
@@ -86,7 +140,7 @@ SetLocalSystemTime(HWND hwnd)
                      (WPARAM)&Time,
                      0))
     {
-        SystemSetLocalTime(&Time);
+        ProcessLocalTime(Time);
 
         SetWindowLongPtrW(hwnd,
                           DWLP_MSGRESULT,

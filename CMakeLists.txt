@@ -271,7 +271,11 @@ Enable this if the module uses typeid or dynamic_cast. You will probably need to
     endif()
 
     if(_NT_VALUE GREATER_EQUAL 2560)
-        add_definitions(-DVER_PRODUCTBUILD=26100 -DVER_PRODUCTBUILD_QFE=1)
+        if (ARCH STREQUAL "arm64") # use 26H1 build
+            add_definitions(-DVER_PRODUCTBUILD=28000 -DVER_PRODUCTBUILD_QFE=1575)
+        else()
+            add_definitions(-DVER_PRODUCTBUILD=26100 -DVER_PRODUCTBUILD_QFE=1742)
+        endif()
     endif()
 
     # Arch Options

@@ -3,6 +3,7 @@
  * LICENSE:     GPL-3.0-or-later (https://spdx.org/licenses/GPL-3.0-or-later)
  * PURPOSE:     Hibernation file and image writer
  * COPYRIGHT:   Copyright 2026 Ahmed ARIF <arif.ing@outlook.com>
+ *              Copyright 1997-2028 Republic of CATV 95 <catv95republic@proton.me>
  */
 
 #include <ntoskrnl.h>
@@ -10,6 +11,8 @@
 #include <reactos/hiberfil.h>
 #define NDEBUG
 #include <debug.h>
+
+#include "inbv/logo.h"
 
 #define POP_HIBER_TAG               'bHoP'
 #define POP_HIBER_STAGING_SIZE      (1024 * 1024)
@@ -441,6 +444,37 @@ PopHiberEmitRecord(
     return Status;
 }
 
+/*
+ * @implemented
+ */
+static
+VOID
+PopHiberUpdateProcess(ULONG PCT)
+{
+    ULONG RetPct = 0;
+    CHAR HiberBuf[16];
+
+    RetPct = PCT;
+    if (RetPct == 0 || RetPct>99)
+        return;
+
+    if ( InbvBootDriverInstalled )
+    {
+        InbvUpdateProgressBar(RetPct + 1);
+    }
+    else
+    {
+        RtlStringCbPrintfA(HiberBuf,
+                           sizeof(HiberBuf),
+                           "PopSave: %lu%%\n",
+                           (RetPct + 1));
+        InbvDisplayString(HiberBuf);
+    }
+}
+
+/*
+ * @implemented
+ */
 static
 NTSTATUS
 PopHiberWriteRecords(VOID)
@@ -453,6 +487,7 @@ PopHiberWriteRecords(VOID)
     ULONG Page;
     ULONG Compressed;
     ULONG Tenth = 0;
+    ULONG LastPct = 0;
     PVOID Mapping;
     NTSTATUS Status;
 
@@ -504,11 +539,36 @@ PopHiberWriteRecords(VOID)
             {
                 Tenth = (ULONG)(Written * 10 / PopHiber.DataPages);
                 DPRINT1("Writing the hibernation image: %lu%%\n", Tenth * 10);
+                if ( ((Tenth * 10) + 20) != LastPct )
+                {
+                    LastPct = ((Tenth * 10) + 20);
+                    PopHiberUpdateProcess(LastPct);
+                }
             }
         }
     }
 
     return PopHiberEmitRecord(0, 0, LNT_HIBER_RECORD_END, NULL, 0);
+}
+
+VOID
+NTAPI
+PopHiberFinished(
+    _In_ NTSTATUS Status)
+{
+    PopHiberInvalidate();
+    PopHiberRelease();
+    
+    if ( Status == STATUS_DEVICE_DOES_NOT_EXIST )
+    {
+        /* Put up safe to shutdown screen */
+        DisplayHiberCompleteScreen();
+        
+        /* Freeze */
+        for (;;)
+        {
+        }
+    }
 }
 
 NTSTATUS
@@ -531,6 +591,9 @@ PopHiberSystemHandler(
     Status = PopHiberBuildRanges();
     if (!NT_SUCCESS(Status))
         return Status;
+
+    /* Put up hibernating screen */
+    DisplayHibernationScreen();
 
     PopHiber.ExtentIndex = 0;
     PopHiber.ExtentStartVcn = PopHiber.Extents->StartingVcn.QuadPart;

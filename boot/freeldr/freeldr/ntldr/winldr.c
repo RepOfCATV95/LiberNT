@@ -36,6 +36,7 @@ PLOADER_SYSTEM_BLOCK WinLdrSystemBlock;
 PCWSTR BootFileSystem = NULL;
 
 BOOLEAN VirtualBias = FALSE;
+BOOLEAN SosEnabled = FALSE;
 BOOLEAN BootLogo = FALSE;
 
 extern ULONG InitSafeBootMode;
@@ -1720,6 +1721,9 @@ LoadAndBootWindows(
             return Status;
         }
     }
+
+    /* Handle the SOS option */
+    SosEnabled = !!NtLdrGetOption(BootOptions, "SOS");
 
     /* Allocate and minimally-initialize the Loader Parameter Block */
     AllocateAndInitLPB(OperatingSystemVersion, &LoaderBlock);

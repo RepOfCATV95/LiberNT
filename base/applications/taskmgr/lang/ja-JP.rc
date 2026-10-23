@@ -312,7 +312,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_APP_TITLE "タスク マネージャ"
+    IDS_APP_TITLE "CATV 95 タスク マネージャ"
     IDC_TASKMGR "タスク マネージャ"
     IDS_IDLE_PROCESS "システム アイドル プロセス"
 END

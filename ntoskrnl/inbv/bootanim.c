@@ -16,6 +16,7 @@
 #include "inbv/logo.h"
 #include "inbv/inbvgop.h"
 
+/* See also mm/ARM3/miarm.h */
 #define MM_READONLY     1   // PAGE_READONLY
 #define MM_READWRITE    4   // PAGE_WRITECOPY
 
@@ -38,216 +39,605 @@ typedef enum _BBLT_HORZ_ALIGNMENT
     AL_HORIZONTAL_RIGHT
 } BBLT_HORZ_ALIGNMENT;
 
+#define INBV_ROTBAR_IMPLEMENTED
+
+extern ULONG ProgressBarLeft, ProgressBarTop;
+extern BOOLEAN ShowProgressBar;
+extern BOOLEAN Win2KHaxor;
+
+#ifdef INBV_ROTBAR_IMPLEMENTED
+
+/* Specifies on how kernel calls BOOTVID to display a boot screen based on LOGO_TYPE */
+typedef enum _LOGO_TYPE
+{
+    LOGO_UNSPECIFIED,
+    LOGO_PETRO,
+    LOGO_WHISTLER
+} LOGO_TYPE;
+
+/* Windows 8+ boot animation variables */
+static LOGO_TYPE LogoSelections = LOGO_UNSPECIFIED;
+
+/* DPCs */
+static KDPC BootAnimDpc;
+static KTIMER BootAnimTimer;
+static LARGE_INTEGER BootAnimBaseTimer;
+
+/* These are variables being renamed from their Windows 2000 counterparts */
+static ULONG AnimBasePosX;
+static ULONG AnimBasePosY;
+static ULONG AnimBaseWidth;
+static ULONG AnimBaseHeight;
+static ULONG AnimBaseHalfWidth;
+static ULONG AnimBaseProgress;
+static ULONG InTextMode;
+static UCHAR RotLineBuffer[3200];
+static BOOLEAN BootSeqEntered = FALSE;
+
+/* Shows a boot screen from ReactOS version 0.2.x, otherwise a Windows 2000-styled boot screen is displayed instead. */
+static BOOLEAN Haxor = FALSE;
+
+/* Used by hibernating screen only */
+static BOOLEAN HiberHaxor = FALSE;
+
+#endif // INBV_ROTBAR_IMPLEMENTED
+
 /* FADE-IN FUNCTION **********************************************************/
 
 /* RGBQUAD and BITMAPINFOHEADER are now defined in logo.h */
 
-static RGBQUAD MainPalette[16];
-
 #define PALETTE_FADE_STEPS  12
 #define PALETTE_FADE_TIME   (15 * 1000) /* 15 ms */
 
-static VOID
-BootLogoFadeIn(VOID)
+/* FUNCTIONS *****************************************************************/
+
+#if 0 // temporarily ifdef'd out
+CODE_SEG("INIT")
+BOOLEAN
+NTAPI
+BootAnimInitialize(
+    _In_ PLOADER_PARAMETER_BLOCK LoaderBlock,
+    _In_ ULONG Count)
 {
-    UCHAR PaletteBitmapBuffer[sizeof(BITMAPINFOHEADER) + sizeof(MainPalette)];
-    PBITMAPINFOHEADER PaletteBitmap = (PBITMAPINFOHEADER)PaletteBitmapBuffer;
-    LPRGBQUAD Palette = (LPRGBQUAD)(PaletteBitmapBuffer + sizeof(BITMAPINFOHEADER));
-    ULONG Iteration, Index, ClrUsed;
+    /* Return install state */
+    return TRUE;
+}
+#endif
 
-    LARGE_INTEGER Delay;
-    Delay.QuadPart = -(PALETTE_FADE_TIME * 10);
+static
+VOID
+DrawProgressBars(
+    _In_ ULONG   SubPercentTimes100,
+    _In_ BOOLEAN InROS,
+    _In_ ULONG   FillCount
+)
+{
+    UCHAR PBColor;
+    int i;
 
-    /* Check if we are installed and we own the display */
-    if (!InbvBootDriverInstalled ||
-        (InbvGetDisplayState() != INBV_DISPLAY_STATE_OWNED))
+    if ( InROS && !InTextMode )
     {
+        i = 0;
+#if defined(__riscv) && (__riscv_xlen == 64)
+        /* Set PBColor to dark green for ReactOS 0.2.x boot screen */
+        PBColor = BV_COLOR_YELLOW;
+#else
+        /* Set PBColor to white for ReactOS 0.2.x boot screen */
+        PBColor = BV_COLOR_WHITE;
+#endif
+
+        /* If 0%, draw also the left round corner */
+        if (SubPercentTimes100 <= 10*100)
+        {
+            VidSolidColorFill(ProgressBarLeft - 6,
+                              ProgressBarTop + 6,
+                              ProgressBarLeft - 6,
+                              ProgressBarTop - 6 + VID_PROGRESS_BAR_ROS_HEIGHT,
+                              PBColor);
+
+            VidSolidColorFill(ProgressBarLeft - 5,
+                              ProgressBarTop + 4,
+                              ProgressBarLeft - 5,
+                              ProgressBarTop - 4 + VID_PROGRESS_BAR_ROS_HEIGHT,
+                              PBColor);
+
+            VidSolidColorFill(ProgressBarLeft - 4,
+                              ProgressBarTop + 3,
+                              ProgressBarLeft - 4,
+                              ProgressBarTop - 3 + VID_PROGRESS_BAR_ROS_HEIGHT,
+                              PBColor);
+
+            VidSolidColorFill(ProgressBarLeft - 3,
+                              ProgressBarTop + 2 ,
+                              ProgressBarLeft - 3,
+                              ProgressBarTop - 2 + VID_PROGRESS_BAR_ROS_HEIGHT,
+                              PBColor);
+
+            VidSolidColorFill(ProgressBarLeft - 2,
+                              ProgressBarTop + 1,
+                              ProgressBarLeft - 2,
+                              ProgressBarTop - 1 + VID_PROGRESS_BAR_ROS_HEIGHT,
+                              PBColor);
+
+            VidSolidColorFill(ProgressBarLeft - 1,
+                              ProgressBarTop + 1,
+                              ProgressBarLeft - 1,
+                              ProgressBarTop - 1 + VID_PROGRESS_BAR_ROS_HEIGHT,
+                              PBColor);
+        }
+
+        /* Fill the progress bar */
+        VidSolidColorFill(ProgressBarLeft,
+                          ProgressBarTop,
+                          ProgressBarLeft + FillCount,
+                          ProgressBarTop + VID_PROGRESS_BAR_ROS_HEIGHT,
+                          PBColor);
+
+        /* If 100%, draw also the right round corner */
+        if (SubPercentTimes100 >= 100*100)
+        {
+            VidSolidColorFill(ProgressBarLeft + VID_PROGRESS_BAR_ROS_WIDTH + 1,
+                              ProgressBarTop + 1,
+                              ProgressBarLeft + VID_PROGRESS_BAR_ROS_WIDTH + 1,
+                              ProgressBarTop - 1 + VID_PROGRESS_BAR_ROS_HEIGHT,
+                              PBColor);
+
+            VidSolidColorFill(ProgressBarLeft + VID_PROGRESS_BAR_ROS_WIDTH + 2,
+                              ProgressBarTop + 1,
+                              ProgressBarLeft + VID_PROGRESS_BAR_ROS_WIDTH + 2,
+                              ProgressBarTop - 1 + VID_PROGRESS_BAR_ROS_HEIGHT,
+                              PBColor);
+
+            VidSolidColorFill(ProgressBarLeft + VID_PROGRESS_BAR_ROS_WIDTH + 3,
+                              ProgressBarTop + 2 ,
+                              ProgressBarLeft + VID_PROGRESS_BAR_ROS_WIDTH + 3,
+                              ProgressBarTop - 2 + VID_PROGRESS_BAR_ROS_HEIGHT,
+                              PBColor);
+
+            VidSolidColorFill(ProgressBarLeft + VID_PROGRESS_BAR_ROS_WIDTH + 4,
+                              ProgressBarTop + 3,
+                              ProgressBarLeft + VID_PROGRESS_BAR_ROS_WIDTH + 4,
+                              ProgressBarTop - 3 + VID_PROGRESS_BAR_ROS_HEIGHT,
+                              PBColor);
+
+            VidSolidColorFill(ProgressBarLeft + VID_PROGRESS_BAR_ROS_WIDTH + 5,
+                              ProgressBarTop + 4,
+                              ProgressBarLeft + VID_PROGRESS_BAR_ROS_WIDTH + 5,
+                              ProgressBarTop - 4 + VID_PROGRESS_BAR_ROS_HEIGHT,
+                              PBColor);
+
+            VidSolidColorFill(ProgressBarLeft + VID_PROGRESS_BAR_ROS_WIDTH + 6,
+                              ProgressBarTop + 6,
+                              ProgressBarLeft + VID_PROGRESS_BAR_ROS_WIDTH + 6,
+                              ProgressBarTop - 6 + VID_PROGRESS_BAR_ROS_HEIGHT,
+                              PBColor);
+        }
+    }
+    else
+    {
+        // TODO: Use shade of yellow for AUTOCHK screen (RISC-V 64-bit builds only)
+        if ( InTextMode )
+        {
+            /* Set PBColor for /SOS boot screen */
+            PBColor = BV_COLOR_LIGHT_BLUE;
+        }
+        else if ( HiberHaxor && !InTextMode )
+        {
+            /* Set PBColor depending on different architecture (IA-32, AMD64, ARM64, RISC-V) */
+            if (SharedUserData->NtProductType == NtProductWinNt)
+            {
+                /* Professional */
+#if defined(_M_AMD64) || defined(_M_X64) || defined(_M_ARM64) || (defined(__riscv) && (__riscv_xlen == 64))
+                PBColor = BV_COLOR_LIGHT_GRAY;
+#else
+                PBColor = BV_COLOR_BLUE;
+#endif
+            }
+            else
+            {
+                /* Server */
+#if defined(_M_AMD64) || defined(_M_X64) || defined(_M_ARM64) || (defined(__riscv) && (__riscv_xlen == 64))
+                PBColor = BV_COLOR_DARK_GRAY;
+#else
+                PBColor = BV_COLOR_BLUE;
+#endif
+            }
+        }
+        else
+        {
+            /* Set PBColor depending on different architecture (IA-32, AMD64, ARM64, RISC-V) */
+            if (SharedUserData->NtProductType == NtProductWinNt)
+            {
+#if defined(_M_AMD64) || defined(_M_X64) || defined(_M_ARM64)
+                PBColor = BV_COLOR_LIGHT_GREEN;
+#elif defined(__riscv) && (__riscv_xlen == 64) // 64-bit RISC-V uses dark green instead of dark fuchsia color (used for other 64-bit ports)
+                PBColor = BV_COLOR_YELLOW;
+#else
+                PBColor = BV_COLOR_RED;
+#endif
+            }
+            else
+            {
+#if defined(_M_AMD64) || defined(_M_X64) || defined(_M_ARM64)
+                PBColor = BV_COLOR_YELLOW;
+#elif defined(__riscv) && (__riscv_xlen == 64)
+                PBColor = BV_COLOR_YELLOW;
+#else
+                PBColor = BV_COLOR_RED;
+#endif
+            }
+        }
+
+        i = 0;
+        while (i < FillCount)
+        {
+            VidSolidColorFill(ProgressBarLeft + (i * VID_PROGRESS_BAR_EXTRA_WIDTH),
+                              ProgressBarTop,
+                              ProgressBarLeft + ((i + 1) * VID_PROGRESS_BAR_EXTRA_WIDTH) - 2,
+                              ProgressBarTop + VID_PROGRESS_BAR_GEN_HEIGHT,
+                              PBColor);
+            i += 1;
+        }
+    }
+}
+
+/**
+ * @brief
+ * Ticks the progress bar. Used by InbvUpdateProgressBar() and related.
+ *
+ * @param[in]   SubPercentTimes100
+ * The progress percentage, scaled up by 100.
+ *
+ * @return None.
+ **/
+VOID
+NTAPI
+BootAnimTickProgressBar(
+    _In_ ULONG SubPercentTimes100)
+{
+    ULONG FillCount;
+
+    /* Make sure the progress bar is enabled, that we own and are installed */
+    ASSERT(ShowProgressBar &&
+           InbvBootDriverInstalled &&
+           (InbvGetDisplayState() == INBV_DISPLAY_STATE_OWNED));
+
+    /* Compute fill count */
+    if ( Haxor )
+    {
+        /* Acquire the lock */
+        InbvAcquireLock();
+
+        /* Calculate and draw progress bar indicator */
+        FillCount = VID_PROGRESS_BAR_ROS_SIZE * SubPercentTimes100 / (100 * 100);
+        DrawProgressBars(SubPercentTimes100, TRUE, FillCount);
+
+        /* Release the lock */
+        InbvReleaseLock();
+    }
+    else
+    {
+        /* Acquire the lock */
+        InbvAcquireLock();
+
+        /* Calculate and draw progress bar indicator */
+        FillCount = VID_PROGRESS_BAR_EXTRA_SIZE * SubPercentTimes100 / (100 * 100);
+        DrawProgressBars(SubPercentTimes100, FALSE, FillCount);
+
+        /* Release the lock */
+        InbvReleaseLock();
+    }   
+}
+
+#ifdef INBV_ROTBAR_IMPLEMENTED
+
+static
+VOID
+NTAPI
+InbvRotationThread(
+    _In_ PKDPC Dpc,
+    _In_ PVOID Context,
+    _In_ PVOID SystemArgument1,
+    _In_ PVOID SystemArgument2
+)
+{
+    UNREFERENCED_PARAMETER(Dpc);
+    UNREFERENCED_PARAMETER(Context);
+    UNREFERENCED_PARAMETER(SystemArgument1);
+    UNREFERENCED_PARAMETER(SystemArgument2);
+
+    if (LogoSelections == LOGO_WHISTLER)
+    {
+        KeCancelTimer(&BootAnimTimer);
         return;
     }
 
-    /*
-     * Build a bitmap containing the fade-in palette. The palette entries
-     * are then processed in a loop and set using VidBitBlt function.
-     */
-    ClrUsed = RTL_NUMBER_OF(MainPalette);
-    RtlZeroMemory(PaletteBitmap, sizeof(BITMAPINFOHEADER));
-    PaletteBitmap->biSize = sizeof(BITMAPINFOHEADER);
-    PaletteBitmap->biBitCount = 4;
-    PaletteBitmap->biClrUsed = ClrUsed;
-
-    /*
-     * Main animation loop.
-     */
-    for (Iteration = 0; Iteration <= PALETTE_FADE_STEPS; ++Iteration)
+    InbvCheckDisplayOwnership();
+    if (InbvGetDisplayState() == INBV_DISPLAY_STATE_OWNED)
     {
-        for (Index = 0; Index < ClrUsed; Index++)
-        {
-            Palette[Index].rgbRed = (UCHAR)
-                (MainPalette[Index].rgbRed * Iteration / PALETTE_FADE_STEPS);
-            Palette[Index].rgbGreen = (UCHAR)
-                (MainPalette[Index].rgbGreen * Iteration / PALETTE_FADE_STEPS);
-            Palette[Index].rgbBlue = (UCHAR)
-                (MainPalette[Index].rgbBlue * Iteration / PALETTE_FADE_STEPS);
-        }
-
-        /* Do the animation */
+        /* Acquire the lock */
         InbvAcquireLock();
-        VidBitBlt(PaletteBitmapBuffer, 0, 0);
+
+        /* Left side of bar */
+        InbvBufferToScreenBlt(RotLineBuffer,
+                              AnimBasePosX + AnimBaseProgress,
+                              AnimBasePosY,
+                              AnimBaseWidth - AnimBaseProgress,
+                              AnimBaseHeight,
+                              AnimBaseHalfWidth);
+
+        /* Right side of bar */
+        InbvBufferToScreenBlt((PUCHAR)RotLineBuffer + ((ULONG)(AnimBaseWidth - AnimBaseProgress) >> 1),
+                              AnimBasePosX,
+                              AnimBasePosY,
+                              AnimBaseProgress,
+                              AnimBaseHeight,
+                              AnimBaseHalfWidth);
+
+        /* Increment the anim index */
+        AnimBaseProgress+=4;
+        if (AnimBaseProgress>=AnimBaseWidth)
+            AnimBaseProgress=0;
+
+        /* Release the lock */
         InbvReleaseLock();
-
-        /* Wait for a bit */
-        KeDelayExecutionThread(KernelMode, FALSE, &Delay);
+    }
+    else
+    {
+        KeCancelTimer(&BootAnimTimer);
     }
 }
 
-static VOID
-BitBltPalette(
-    IN PVOID Image,
-    IN BOOLEAN NoPalette,
-    IN ULONG X,
-    IN ULONG Y)
+#endif // INBV_ROTBAR_IMPLEMENTED
+
+CODE_SEG("INIT")
+static
+VOID
+NTAPI
+DisplayFilter(
+    _Inout_ PCSTR* String)
 {
-    LPRGBQUAD Palette;
-    RGBQUAD OrigPalette[RTL_NUMBER_OF(MainPalette)];
+    /* Windows hack to skip first dots displayed by AUTOCHK */
+    static BOOLEAN NoNT4 = FALSE;
 
-    /* If requested, remove the palette from the image */
-    if (NoPalette)
+    /* If "." is given set *String to empty string */
+    if (NoNT4==FALSE && strcmp(*String, ".") == 0)
+        *String = "";
+
+    if (**String)
     {
-        /* Get bitmap header and palette */
-        PBITMAPINFOHEADER BitmapInfoHeader = Image;
-        Palette = (LPRGBQUAD)((PUCHAR)Image + BitmapInfoHeader->biSize);
+        /* Remove the filter */
+        InbvInstallDisplayStringFilter(NULL);
 
-        /* Save the image original palette and remove palette information */
-        RtlCopyMemory(OrigPalette, Palette, sizeof(OrigPalette));
-        RtlZeroMemory(Palette, sizeof(OrigPalette));
-    }
+        /* Turn off hacks */
+        NoNT4 = TRUE;
+		
+#ifdef INBV_ROTBAR_IMPLEMENTED
+        /*
+         * If Windows 8+ GOP-styled boot screen is shown in NT6+ builds without BOOTVID fallback, then
+         * halt the boot animation, change logo type to Windows 2000 and do the rest before entering an AUTOCHK (text-mode) screen
+         */
+        if ( LogoSelections == LOGO_WHISTLER )
+        {
+            LogoSelections = LOGO_PETRO;
+        }
+#endif
 
-    /* Draw the image */
-    InbvBitBlt(Image, X, Y);
+        /* Avoid drawing progress bar while in process of entering text-mode boot screen */
+        if ( !BootSeqEntered && !Win2KHaxor )
+            BootSeqEntered = TRUE;
 
-    /* Restore the image original palette */
-    if (NoPalette)
-    {
-        RtlCopyMemory(Palette, OrigPalette, sizeof(OrigPalette));
+        /* If ReactOS 0.2.x boot screen is shown in Embedded edition or RISC-V version of CATV 95 LiberNT, then clear the flag first */
+        if ( Haxor )
+            Haxor = FALSE;
+
+        /* Stop the DPC timer before entering AUTOCHK boot screen */
+        KeCancelTimer(&BootAnimTimer);
+		
+        /* Draw text screen */
+        DisplayBootBitmap(TRUE);
     }
 }
-
-static VOID
-BitBltAligned(
-    IN PVOID Image,
-    IN BOOLEAN NoPalette,
-    IN BBLT_HORZ_ALIGNMENT HorizontalAlignment,
-    IN BBLT_VERT_ALIGNMENT VerticalAlignment,
-    IN ULONG MarginLeft,
-    IN ULONG MarginTop,
-    IN ULONG MarginRight,
-    IN ULONG MarginBottom)
-{
-    PBITMAPINFOHEADER BitmapInfoHeader = Image;
-    VID_DISPLAY_INFO DisplayInfo;
-    ULONG X, Y;
-
-    InbvQueryDisplayInfo(&DisplayInfo);
-
-    /* Calculate X */
-    switch (HorizontalAlignment)
-    {
-        case AL_HORIZONTAL_LEFT:
-            X = MarginLeft - MarginRight;
-            break;
-
-        case AL_HORIZONTAL_CENTER:
-            X = MarginLeft - MarginRight + (DisplayInfo.Width - BitmapInfoHeader->biWidth + 1) / 2;
-            break;
-
-        case AL_HORIZONTAL_RIGHT:
-            X = MarginLeft - MarginRight + DisplayInfo.Width - BitmapInfoHeader->biWidth;
-            break;
-
-        default:
-            /* Unknown */
-            return;
-    }
-
-    /* Calculate Y */
-    switch (VerticalAlignment)
-    {
-        case AL_VERTICAL_TOP:
-            Y = MarginTop - MarginBottom;
-            break;
-
-        case AL_VERTICAL_CENTER:
-            Y = MarginTop - MarginBottom + (DisplayInfo.Height - BitmapInfoHeader->biHeight + 1) / 2;
-            break;
-
-        case AL_VERTICAL_BOTTOM:
-            Y = MarginTop - MarginBottom + DisplayInfo.Height - BitmapInfoHeader->biHeight;
-            break;
-
-        default:
-            /* Unknown */
-            return;
-    }
-
-    /* Finally draw the image */
-    BitBltPalette(Image, NoPalette, X, Y);
-}
-
-/* FUNCTIONS *****************************************************************/
 
 CODE_SEG("INIT")
 VOID
 NTAPI
-DisplayBootBitmap(VOID)
+DisplayBootBitmap(
+    _In_ BOOLEAN TextMode)
 {
-    PVOID BootCopy = NULL, BootLogo = NULL;
+    static BOOLEAN FirstCall = TRUE;
+    static BOOLEAN HasGOP = FALSE;
+#ifdef INBV_ROTBAR_IMPLEMENTED
+    LOGO_TYPE TempLogoSel = LOGO_UNSPECIFIED;
+#endif
 
-    if (InbvGopHandleBootBitmap())
-        return;
+    /* If not using fallback, jump straight to GOP boot screen */
+    if ( !Win2KHaxor )
+        HasGOP = InbvGopHandleBootBitmap();
+    else
+        HasGOP = FALSE;
 
-    /* Is the boot driver installed? */
-    if (!InbvBootDriverInstalled) return;
-
-    /* Legacy VGA path: full classic boot animation */
-
-    /*
-     * Make the kernel resource section temporarily writable,
-     * as we are going to change the bitmaps' palette in place.
-     */
-    MmChangeKernelResourceSectionProtection(MM_READWRITE);
-
-    /* Load boot screen logo */
-    BootLogo = InbvGetResourceAddress(IDB_LOGO_DEFAULT);
-
-    /* Make sure we have a logo */
-    if (BootLogo)
+    if ( HasGOP )
     {
-        /* Save the main image palette for implementing the fade-in effect */
-        PBITMAPINFOHEADER BitmapInfoHeader = BootLogo;
-        LPRGBQUAD Palette = (LPRGBQUAD)((PUCHAR)BootLogo + BitmapInfoHeader->biSize);
-        RtlCopyMemory(MainPalette, Palette, sizeof(MainPalette));
-
-        /* Draw the logo at the center of the screen */
-        BitBltAligned(BootLogo,
-                      TRUE,
-                      AL_HORIZONTAL_CENTER,
-                      AL_VERTICAL_CENTER,
-                      0, 0, 0, 34);
+#ifdef INBV_ROTBAR_IMPLEMENTED
+        TempLogoSel = LOGO_WHISTLER;
+        LogoSelections = TempLogoSel;
+#endif
+        return;
     }
 
-    /* Load and draw copyright text bitmap */
-    BootCopy = InbvGetResourceAddress(IDB_COPYRIGHT);
-    BitBltAligned(BootCopy,
-                  TRUE,
-                  AL_HORIZONTAL_LEFT,
-                  AL_VERTICAL_BOTTOM,
-                  22, 0, 0, 20);
+#ifdef INBV_ROTBAR_IMPLEMENTED
+    TempLogoSel = LOGO_PETRO;
+    LogoSelections = TempLogoSel;
+#endif
 
-    /* Restore the kernel resource section protection to be read-only */
-    MmChangeKernelResourceSectionProtection(MM_READONLY);
+    if (TextMode)
+    {
+        PUCHAR Header = NULL;
 
-    /* Display the boot logo and fade it in */
-    BootLogoFadeIn();
+        InTextMode = TRUE;
+        if ( Haxor )
+            Haxor = FALSE;
+
+        /* Is the boot driver installed? */
+        if (!InbvBootDriverInstalled) return;
+		
+        /* Emulate Windows 2000-styled design of text-mode boot screen */
+        InbvSetTextColor(BV_COLOR_WHITE);
+        /* NOTE: GOP-specific display info cannot be used for Windows 2000 AUTOCHK screen */
+        InbvSolidColorFill(0,0,SCREEN_WIDTH-1,SCREEN_HEIGHT-1,BV_COLOR_BLACK);
+        /* Draw a bottom gray box */
+        InbvSolidColorFill(ROTATION_BAR_TEXTMODE_OFFSET, VID_FOOTER_BG_TOP, VID_BOTTOM_BOX_WIDTH, VID_BOTTOM_BOX_HEIGHT, BV_COLOR_LIGHT_RED);
+		
+        if (SharedUserData->NtProductType == NtProductWinNt)
+        {
+            /* Professional - Get resources */
+            Header = InbvGetResourceAddress(IDB_PROFESSIONAL_HEADER);
+        }
+        else
+        {
+            /* Server - Get resources */
+			Header = InbvGetResourceAddress(IDB_SERVER_HEADER);
+        }
+
+        /* Set the scrolling region */
+        InbvSetScrollRegion(VID_SCROLL_AREA_LEFT,
+                            VID_SCROLL_AREA_TOP,
+                            VID_SCROLL_AREA_RIGHT,
+                            VID_SCROLL_AREA_BOTTOM);
+
+        /* Set the progress bar coordinates */
+        InbvSetProgressBarCoordinates(VID_PROGRESS_BAR_TEXT_LEFT,
+                                      VID_PROGRESS_BAR_TEXT_TOP);
+
+        /* Make sure we have an AUTOCHK-style boot screen bitmap */
+        if (Header)
+        {
+            /* BitBlt this bitmap on the screen */
+            InbvBitBlt(Header, 0, 0);
+        }
+
+#ifdef INBV_ROTBAR_IMPLEMENTED
+        /* Set the boot-time animation offsets */
+        AnimBasePosX       =   ROTATION_BAR_TEXTMODE_OFFSET;
+        AnimBasePosY       =   ROTATION_BAR_TEXTMODE_HEIGHT;
+        AnimBaseWidth      =   ROTATION_BAR_TEXTMODE_WIDTH;
+        AnimBaseHeight     =   ROTATION_BAR_TEXTMODE_SIZE;
+        AnimBaseHalfWidth  =   ROTATION_BAR_GEN_HALFER;
+#endif
+
+        /* Draw four blocks of color representing the progress bar if kernel transitions directly into a verbose (AUTOCHK) boot screen */
+        if ( FirstCall )
+        {
+            /* Fill the color blocks representing the progress bar */
+            InbvSolidColorFill(237,443,401,443,BV_COLOR_BLUE);
+			InbvSolidColorFill(237,454,401,454,BV_COLOR_WHITE);
+			InbvSolidColorFill(237,443,237,454,BV_COLOR_BLUE);
+			InbvSolidColorFill(401,443,401,454,BV_COLOR_WHITE);
+        }
+    }
+    else
+    {
+        PUCHAR Screen = NULL;
+
+        InTextMode = FALSE;
+
+        /* Is the boot driver installed? */
+        if (!InbvBootDriverInstalled) return;
+
+        /* Fill the screen with shade of blue color before drawing the boot screen. */
+        InbvSolidColorFill(0, 0, SCREEN_WIDTH-1, SCREEN_HEIGHT-1, BV_COLOR_GREEN);
+
+        /* Drop into ReactOS 0.2.x boot screen if kernel is running Embedded edition */
+        if (ExVerifySuite(EmbeddedNT))
+            Haxor = TRUE;
+        else
+            Haxor = FALSE;
+
+        if (Haxor)
+        {
+            /* Load the embedded edition boot screen */
+            Screen = InbvGetResourceAddress(IDB_BOOT_SCREEN_POWERED);
+
+            /* Set progress bar coordinates */
+            InbvSetProgressBarCoordinates(VID_PROGRESS_BAR_NORMAL_ROS_LEFT,
+                                          VID_PROGRESS_BAR_NORMAL_ROS_TOP);
+        }
+        else
+        {
+            /* Load the client/server boot screen */
+            if (SharedUserData->NtProductType == NtProductWinNt)
+                Screen = InbvGetResourceAddress(IDB_BOOT_SCREEN);
+            else
+                Screen = InbvGetResourceAddress(IDB_BOOT_SCREEN_SERVER);
+
+            /* Set progress bar coordinates */
+            InbvSetProgressBarCoordinates(VID_PROGRESS_BAR_NORMAL_LEFT,
+                                          VID_PROGRESS_BAR_NORMAL_TOP);
+        }
+
+        /* Make sure we have a boot screen bitmap */
+        if ( Screen )
+        {
+            /* BitBlt this bitmap */
+            InbvBitBlt(Screen, 0, 0);
+        }
+
+#ifdef INBV_ROTBAR_IMPLEMENTED
+        if ( Haxor )
+        {
+            /* Set the boot-time animation offsets */
+            AnimBasePosX      =  ROTATION_BAR_NORMAL_ROS_OFFSET;
+            AnimBasePosY      =  ROTATION_BAR_NORMAL_ROS_HEIGHT;
+            AnimBaseWidth     =  ROTATION_BAR_NORMAL_ROS_WIDTH;
+            AnimBaseHeight    =  ROTATION_BAR_NORMAL_ROS_SIZE;
+            AnimBaseHalfWidth =  ROTATION_BAR_GEN_HALFER;
+        }
+        else
+        {
+            /* Set animation offsets */
+            AnimBasePosX      =  ROTATION_BAR_NORMAL_OFFSET;
+            AnimBasePosY      =  ROTATION_BAR_NORMAL_HEIGHT;
+            AnimBaseWidth     =  ROTATION_BAR_NORMAL_WIDTH;
+            AnimBaseHeight    =  ROTATION_BAR_NORMAL_SIZE;
+            AnimBaseHalfWidth =  ROTATION_BAR_GEN_HALFER;
+        }
+#endif
+
+        if (Win2KHaxor)
+        {
+            /* Set filter which will draw text display if needed */
+            InbvInstallDisplayStringFilter(DisplayFilter);
+        }
+    }
+
+    if ( HasGOP && !Win2KHaxor )
+    {
+        if ( Haxor )
+            Haxor = FALSE;
+        FirstCall = FALSE;
+        return;
+    }
+
+    /* Initialize the animation, store the line region to rotate in a global buffer, do the rest and set FirstCall to FALSE */
+#ifdef INBV_ROTBAR_IMPLEMENTED
+    AnimBaseProgress = 0;
+    InbvScreenToBufferBlt(RotLineBuffer,
+                          AnimBasePosX,
+                          AnimBasePosY,
+                          AnimBaseWidth,
+                          AnimBaseHeight,
+                          AnimBaseHalfWidth);
+    KeInitializeDpc(&BootAnimDpc, InbvRotationThread, NULL);
+    KeInitializeTimer(&BootAnimTimer);
+    BootAnimBaseTimer.QuadPart = 50 * 10000LL;
+    KeSetTimerEx(&BootAnimTimer, BootAnimBaseTimer, 50, &BootAnimDpc);
+#endif
+    if ( !BootSeqEntered && FirstCall )
+    {
+        BootSeqEntered = TRUE;
+        FirstCall = FALSE;
+    }
 }
 
 CODE_SEG("INIT")
@@ -255,7 +645,108 @@ VOID
 NTAPI
 FinalizeBootLogo(VOID)
 {
-    InbvGopLogoComplete();
+    /*
+     * Leave whatever is on screen alone: the boot logo stays up until the
+     * display driver takes the framebuffer over and InbvNotifyDisplayOwnershipLost
+     * fades it out.
+     */
+    if ( LogoSelections != LOGO_PETRO && !Win2KHaxor )
+        InbvGopLogoComplete();
+}
+
+VOID
+NTAPI
+DisplayHibernationScreen(VOID)
+{
+    UCHAR PBColor;
+    PUCHAR Logo1, Logo2;
+
+    /* Turn off the flag first */
+    if ( Haxor )
+        Haxor = FALSE;
+
+    /* Setup the hibernating screen progress bar scheme */    
+    if ( !HiberHaxor )
+        HiberHaxor = TRUE;
+
+    if (InbvBootDriverInstalled)
+    {
+        /* Assign a color */
+        PBColor = BV_COLOR_DARK_GRAY;
+        
+        /* Acquire ownership and reset the display */
+        InbvAcquireDisplayOwnership();
+        InbvResetDisplay();
+        InbvEnableDisplayString(TRUE);
+        
+        /* Fill entire screen with background color */
+        InbvSolidColorFill(0, 0, SCREEN_WIDTH-1, SCREEN_HEIGHT-1, PBColor);
+        
+        /* Display shutdown logo and hibernating status message */
+        Logo1 = InbvGetResourceAddress(IDB_HIBERNATE_BAR);
+        if (SharedUserData->NtProductType == NtProductWinNt)
+        {
+            /* Professional */
+            Logo2 = InbvGetResourceAddress(IDB_SHUTDOWN_LOGO_PRO);
+        }
+        else
+        {
+            /* Server */
+            Logo2 = InbvGetResourceAddress(IDB_SHUTDOWN_LOGO_SERVER);
+        }
+        
+        /* Draw the logo and hibernating message at the center of the screen */
+        if ((Logo1) && (Logo2))
+        {
+            InbvBitBlt(Logo1, VID_SHUTDOWN_MSG_LEFT, VID_SHUTDOWN_MSG_TOP);
+            InbvBitBlt(Logo2, VID_SHUTDOWN_LOGO_LEFT, VID_SHUTDOWN_LOGO_TOP);
+        }
+    }
+    else
+    {
+        /* Assign a color */
+        PBColor = BV_COLOR_BLUE;
+
+        InbvResetDisplay();
+        InbvEnableDisplayString(TRUE);
+        
+        /* Begin the screen by adding title and extra line */
+        InbvDisplayString("REPUBLIC OF CATV 95\r\n\r\n");
+    }
+    
+    InbvSetProgressBarSubset(0,100);
+    InbvSetProgressBarCoordinates(HIBER_PROGRESS_BAR_WIDTH,
+                                  HIBER_PROGRESS_BAR_HEIGHT);
+}
+
+VOID
+NTAPI
+DisplayHiberCompleteScreen(VOID)
+{
+    if (InbvBootDriverInstalled)
+    {
+        PUCHAR Logo1,Logo2;
+        
+        /* Grab safe to shutdown logo and message */
+        Logo1 = InbvGetResourceAddress(IDB_SHUTDOWN_MSG);
+        if (SharedUserData->NtProductType == NtProductWinNt)
+        {
+            /* Professional */
+            Logo2 = InbvGetResourceAddress(IDB_SHUTDOWN_LOGO_PRO);
+        }
+        else
+        {
+            /* Server */
+            Logo2 = InbvGetResourceAddress(IDB_SHUTDOWN_LOGO_SERVER);
+        }
+
+        /* Draw the logo and shutdown message at the center of the screen */
+        if ((Logo1) && (Logo2))
+        {
+            InbvBitBlt(Logo1, VID_SHUTDOWN_MSG_LEFT, VID_SHUTDOWN_MSG_TOP);
+            InbvBitBlt(Logo2, VID_SHUTDOWN_LOGO_LEFT, VID_SHUTDOWN_LOGO_TOP);
+        }
+    }
 }
 
 VOID
@@ -263,28 +754,35 @@ NTAPI
 DisplayShutdownBitmap(VOID)
 {
     PUCHAR Logo1, Logo2;
-    VID_DISPLAY_INFO DisplayInfo;
-    ULONG CanvasLeft, CanvasTop;
+    UCHAR PBColor;
 
-    InbvQueryDisplayInfo(&DisplayInfo);
-    CanvasLeft = (DisplayInfo.Width - SCREEN_WIDTH) / 2;
-    CanvasTop = (DisplayInfo.Height - SCREEN_HEIGHT) / 2;
+    /* Assign a color */
+    PBColor = BV_COLOR_DARK_GRAY;
 
     /* Yes we do, cleanup for shutdown screen */
-    // InbvResetDisplay();
     InbvInstallDisplayStringFilter(NULL);
     InbvEnableDisplayString(TRUE);
-    InbvSolidColorFill(0, 0, DisplayInfo.Width - 1, DisplayInfo.Height - 1, BV_COLOR_BLACK);
-    InbvSetScrollRegion(0, 0, DisplayInfo.Width - 1, DisplayInfo.Height - 1);
+    InbvSolidColorFill(0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1, PBColor);
+    InbvSetScrollRegion(0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
 
     /* Display shutdown logo and message */
     Logo1 = InbvGetResourceAddress(IDB_SHUTDOWN_MSG);
-    Logo2 = InbvGetResourceAddress(IDB_LOGO_DEFAULT);
-
-    if (Logo1 && Logo2)
+    if (SharedUserData->NtProductType == NtProductWinNt)
     {
-        InbvBitBlt(Logo1, CanvasLeft + VID_SHUTDOWN_MSG_LEFT, CanvasTop + VID_SHUTDOWN_MSG_TOP);
-        InbvBitBlt(Logo2, CanvasLeft + VID_SHUTDOWN_LOGO_LEFT, CanvasTop + VID_SHUTDOWN_LOGO_TOP);
+        /* Professional */
+        Logo2 = InbvGetResourceAddress(IDB_SHUTDOWN_LOGO_PRO);
+    }
+    else
+    {
+        /* Server */
+        Logo2 = InbvGetResourceAddress(IDB_SHUTDOWN_LOGO_SERVER);
+    }
+
+    /* Draw the logo and shutdown message at the center of the screen */
+    if ((Logo1) && (Logo2))
+    {
+        InbvBitBlt(Logo1, VID_SHUTDOWN_MSG_LEFT, VID_SHUTDOWN_MSG_TOP);
+        InbvBitBlt(Logo2, VID_SHUTDOWN_LOGO_LEFT, VID_SHUTDOWN_LOGO_TOP);
     }
 }
 

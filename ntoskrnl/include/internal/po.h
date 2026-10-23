@@ -442,6 +442,12 @@ PopHiberInitialize(
 
 VOID
 NTAPI
+PopHiberFinished(
+    _In_ NTSTATUS Status
+);
+
+VOID
+NTAPI
 PopHiberCaptureLoaderBlock(
     _In_ PLOADER_PARAMETER_BLOCK LoaderBlock
 );
