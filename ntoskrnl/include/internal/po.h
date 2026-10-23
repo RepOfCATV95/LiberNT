@@ -443,7 +443,7 @@ PopHiberInitialize(
 VOID
 NTAPI
 PopHiberFinished(
-    _In_ NTSTATUS Status
+    VOID
 );
 
 VOID

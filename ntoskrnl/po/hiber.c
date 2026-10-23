@@ -553,22 +553,10 @@ PopHiberWriteRecords(VOID)
 
 VOID
 NTAPI
-PopHiberFinished(
-    _In_ NTSTATUS Status)
+PopHiberFinished(VOID)
 {
     PopHiberInvalidate();
     PopHiberRelease();
-    
-    if ( Status == STATUS_DEVICE_DOES_NOT_EXIST )
-    {
-        /* Put up safe to shutdown screen */
-        DisplayHiberCompleteScreen();
-        
-        /* Freeze */
-        for (;;)
-        {
-        }
-    }
 }
 
 NTSTATUS
