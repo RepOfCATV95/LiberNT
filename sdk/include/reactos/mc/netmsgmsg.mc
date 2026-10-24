@@ -663,7 +663,7 @@ Language=English
 An internal error occurred.
 .
 Language=Polish
-Wystąpił wewnętrzny błąd systemu LiberNT.
+Wystąpił wewnętrzny błąd systemu CATV 95.
 .
 Language=Romanian
 An internal error occurred.
@@ -24941,7 +24941,7 @@ Severity=Success
 Facility=System
 SymbolicName=APPERR2_4454
 Language=English
-LiberNT root directory%0
+Republic of CATV 95 root directory%0
 .
 Language=Polish
 Katalog główny systemu LiberNT%0

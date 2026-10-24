@@ -21,6 +21,15 @@ SymbolicName=WINDOWS_NT_BANNER
 Language=English
 Republic of CATV 95 (R) Version %hs (Build %u%hs)
 .
+Language=French
+République de CATV 95 (R) Version %hs (Build %u%hs)
+.
+Language=Polish
+Republika CATV 95 (R) Wersja %hs (Build %u%hs)
+.
+Language=Russian
+Республика CATV 95 (R) Версия %hs (Сборка %u%hs)
+.
 
 MessageId=0x87
 Severity=Informational
@@ -37,6 +46,15 @@ SymbolicName=WINDOWS_NT_INFO_STRING
 Language=English
 %u System Processor [%u MB Memory] %Z
 .
+Language=French
+%u Processeur système [%u Mo de mémoire] %Z
+.
+Language=Polish
+%u Procesor systemowy [%u MB pamięci] %Z
+.
+Language=Russian
+%u Системный процессор [%u МБ памяти] %Z
+.
 
 MessageId=0x89
 Severity=Informational
@@ -44,6 +62,12 @@ Facility=System
 SymbolicName=WINDOWS_NT_MP_STRING
 Language=English
 MultiProcessor Kernel
+.
+Language=Polish
+Jądro wieloprocesorowe
+.
+Language=Russian
+Многопроцессорное ядро
 .
 
 MessageId=0x8A
@@ -60,6 +84,15 @@ Facility=System
 SymbolicName=WINDOWS_NT_INFO_STRING_PLURAL
 Language=English
 %u System Processors [%u MB Memory] %Z
+.
+Language=French
+%u Processeurs système [%u Mo de mémoire] %Z
+.
+Language=Polish
+%u Procesory systemowe [%u MB pamięci] %Z
+.
+Language=Russian
+%u Системные процессоры [%u МБ памяти] %Z
 .
 
 MessageId=0x9F
@@ -109,14 +142,6 @@ select Safe Mode.
 
 Refer to your Getting Started manual for more information on
 how to troubleshoot Stop errors.
-.
-
-MessageId=0x83
-Severity=Warning
-Facility=System
-SymbolicName=BUGCHECK_TECH_INFO
-Language=English
-Technical information:
 .
 
 MessageId=0x0
@@ -374,6 +399,9 @@ BIOS memory options such as caching or shadowing. If you need
 to use Safe Mode to remove or disable components, restart your
 computer, press F8 to select Advanced Startup Options, and then
 select Safe Mode.
+
+Refer to your Getting Started manual for more information on
+how to troubleshoot Stop errors.
 .
 
 MessageId=0x1F
@@ -417,6 +445,9 @@ Disable or uninstall any anti-virus, disk defragmentation
 or backup utilities. Check your hard drive configuration,
 and check for any updated drivers. Run CHKDSK /F to check
 for hard drive corruption, and then restart your computer.
+
+Refer to your Getting Started manual for more information on
+how to troubleshoot Stop errors.
 .
 
 MessageId=0x24
@@ -513,6 +544,9 @@ BIOS memory options such as caching or shadowing. If you need
 to use Safe Mode to remove or disable components, restart your
 computer, press F8 to select Advanced Startup Options, and then
 select Safe Mode.
+
+Refer to your Getting Started manual for more information on
+how to troubleshoot Stop errors.
 .
 
 MessageId=0x2F
