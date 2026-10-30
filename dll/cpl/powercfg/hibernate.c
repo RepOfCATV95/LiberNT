@@ -9,6 +9,31 @@
 
 #include "powercfg.h"
 
+static DWORD
+Hib_ReadPowerDword(LPCTSTR ValueName, DWORD DefaultValue)
+{
+    HKEY hKey;
+    DWORD Type = REG_DWORD;
+    DWORD Value = DefaultValue;
+    DWORD Size = sizeof(Value);
+
+    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE,
+                     TEXT("SYSTEM\\CurrentControlSet\\Control\\Power"),
+                     0,
+                     KEY_QUERY_VALUE,
+                     &hKey) == ERROR_SUCCESS)
+    {
+        if (RegQueryValueEx(hKey, ValueName, NULL, &Type, (LPBYTE)&Value, &Size) != ERROR_SUCCESS ||
+            Type != REG_DWORD || Size != sizeof(Value))
+        {
+            Value = DefaultValue;
+        }
+        RegCloseKey(hKey);
+    }
+
+    return Value;
+}
+
 static VOID
 Hib_InitDialog(HWND hwndDlg)
 {
@@ -18,6 +43,14 @@ Hib_InitDialog(HWND hwndDlg)
     LPTSTR lpRoot;
     ULARGE_INTEGER FreeBytesAvailable, TotalNumberOfBytes, TotalNumberOfFreeBytes;
     BOOLEAN bHibernate;
+    DWORD HibernateEnabled;
+    DWORD HiberFileSizePercent;
+    ULONGLONG RequiredHiberFileSize;
+
+    HibernateEnabled = Hib_ReadPowerDword(TEXT("HibernateEnabled"), 1);
+    HiberFileSizePercent = Hib_ReadPowerDword(TEXT("HiberFileSizePercent"), 40);
+    if (HiberFileSizePercent == 0 || HiberFileSizePercent > 100)
+        HiberFileSizePercent = 40;
 
     if (GetPwrCapabilities(&PowerCaps))
     {
@@ -44,11 +77,16 @@ Hib_InitDialog(HWND hwndDlg)
         StrFormatByteSize(TotalNumberOfFreeBytes.QuadPart, szTemp, _countof(szTemp));
         SetDlgItemText(hwndDlg, IDC_FREESPACE, szTemp);
 
-        // Print the amount of space required for hibernation.
-        StrFormatByteSize(msex.ullTotalPhys, szTemp, _countof(szTemp));
-        SetDlgItemText(hwndDlg, IDC_SPACEFORHIBERNATEFILE, szTemp);
+        /* The kernel reserves HiberFileSizePercent of RAM, not necessarily all RAM. */
+        RequiredHiberFileSize = (msex.ullTotalPhys / 100) * HiberFileSizePercent +
+                                ((msex.ullTotalPhys % 100) * HiberFileSizePercent) / 100;
+        RequiredHiberFileSize = (RequiredHiberFileSize + (1024 * 1024 - 1)) &
+                                ~((ULONGLONG)(1024 * 1024 - 1));
 
-        if (TotalNumberOfFreeBytes.QuadPart < msex.ullTotalPhys && !PowerCaps.HiberFilePresent)
+        // Display the estimated hibernation-file size.
+        StrFormatByteSize(RequiredHiberFileSize, szTemp, _countof(szTemp));
+        SetDlgItemText(hwndDlg, IDC_SPACEFORHIBERNATEFILE, szTemp);
+        if (TotalNumberOfFreeBytes.QuadPart < RequiredHiberFileSize && !PowerCaps.HiberFilePresent)
         {
             EnableWindow(GetDlgItem(hwndDlg, IDC_HIBERNATEFILE), FALSE);
             ShowWindow(GetDlgItem(hwndDlg, IDC_TOLESSFREESPACE), SW_SHOW);
@@ -57,6 +95,12 @@ Hib_InitDialog(HWND hwndDlg)
         {
             ShowWindow(GetDlgItem(hwndDlg, IDC_TOLESSFREESPACE), SW_HIDE);
             EnableWindow(GetDlgItem(hwndDlg, IDC_HIBERNATEFILE), TRUE);
+        }
+
+        if (HibernateEnabled == 0)
+        {
+            CheckDlgButton(hwndDlg, IDC_HIBERNATEFILE, BST_UNCHECKED);
+            EnableWindow(GetDlgItem(hwndDlg, IDC_HIBERNATEFILE), FALSE);
         }
 
         bHibernate = !!PowerCaps.HiberFilePresent;

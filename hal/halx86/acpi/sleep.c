@@ -107,6 +107,7 @@ KeSaveStateForHibernate(
 static PM_DISPATCH_TABLE HalpPmDispatchTable = { ACPI_PM_DISPATCH_SIGNATURE, ACPI_PM_DISPATCH_VERSION, { NULL } };
 static HALP_SLEEP_STATE HalpSleepStates[4];
 static PHALP_SLEEP_PROCESSOR HalpSleepProcessors;
+static PVOID HalpSleepFpuAllocation;
 static ULONG HalpSleepProcessorCount;
 static BOOLEAN HalpSleepInitialized;
 static BOOLEAN HalpSleepHwReduced;
@@ -128,6 +129,59 @@ static HALP_ACPI_REGISTER HalpSleepStatus;
 static volatile LONG HalpSleepGeneration;
 static volatile LONG64 HalpSleepTscOffset;
 static ULONG64 HalpSleepTsc;
+
+static
+VOID
+HalpSleepUnmapRegister(
+    _Inout_ PHALP_ACPI_REGISTER Register)
+{
+    if (Register->Address != 0 && Register->SpaceId == ACPI_GAS_SYSTEM_MEMORY)
+        MmUnmapIoSpace((PVOID)Register->Address, Register->Width);
+
+    RtlZeroMemory(Register, sizeof(*Register));
+}
+
+static
+VOID
+HalpSleepCleanupInitialization(VOID)
+{
+    HalpSleepUnmapRegister(&HalpPm1aControl);
+    HalpSleepUnmapRegister(&HalpPm1bControl);
+    HalpSleepUnmapRegister(&HalpPm1aStatus);
+    HalpSleepUnmapRegister(&HalpPm1bStatus);
+    HalpSleepUnmapRegister(&HalpSleepControl);
+    HalpSleepUnmapRegister(&HalpSleepStatus);
+
+    if (HalpSleepFacs)
+    {
+        MmUnmapIoSpace(HalpSleepFacs, sizeof(FACS));
+        HalpSleepFacs = NULL;
+    }
+
+    if (HalpSleepFpuAllocation)
+    {
+        ExFreePoolWithTag(HalpSleepFpuAllocation, HALP_SLEEP_TAG);
+        HalpSleepFpuAllocation = NULL;
+    }
+
+    if (HalpSleepProcessors)
+    {
+        ExFreePoolWithTag(HalpSleepProcessors, HALP_SLEEP_TAG);
+        HalpSleepProcessors = NULL;
+    }
+
+    HalpSleepProcessorCount = 0;
+    RtlZeroMemory(HalpSleepStates, sizeof(HalpSleepStates));
+    HalpSleepHwReduced = FALSE;
+    HalpSleepXSave = FALSE;
+    HalpSleepXss = FALSE;
+    HalpSleepPat = FALSE;
+    HalpSleepSysenter = FALSE;
+    HalpSleepMtrr = FALSE;
+    HalpSleepTscAdjust = FALSE;
+    HalpSleepVariableMtrrs = 0;
+    HalpSleepFixedMtrrs = FALSE;
+}
 
 static
 BOOLEAN
@@ -360,13 +414,13 @@ HalpSleepAllocateProcessors(VOID)
         return FALSE;
 
     FpuSize = ALIGN_UP_BY(HalpSleepFpuAreaSize(), 64);
-    FpuArea = ExAllocatePoolZero(NonPagedPool,
-                                 HalpSleepProcessorCount * FpuSize + 64,
-                                 HALP_SLEEP_TAG);
-    if (!FpuArea)
+    HalpSleepFpuAllocation = ExAllocatePoolZero(NonPagedPool,
+                                                HalpSleepProcessorCount * FpuSize + 64,
+                                                HALP_SLEEP_TAG);
+    if (!HalpSleepFpuAllocation)
         return FALSE;
 
-    FpuArea = ALIGN_UP_POINTER_BY(FpuArea, 64);
+    FpuArea = ALIGN_UP_POINTER_BY(HalpSleepFpuAllocation, 64);
     for (Index = 0; Index < HalpSleepProcessorCount; Index++)
         HalpSleepProcessors[Index].FpuArea = FpuArea + Index * FpuSize;
 
@@ -826,7 +880,6 @@ HalpInitPowerManagement(
     *PmHalDispatchTable = &HalpPmDispatchTable;
     if (HalpSleepInitialized)
         return STATUS_SUCCESS;
-    HalpSleepInitialized = TRUE;
 
     GetSleepType = (PACPI_PM_GET_SLEEP_TYPE)PmDriverDispatchTable->Function[AcpiPmGetSleepType];
     if (!GetSleepType)
@@ -837,11 +890,17 @@ HalpInitPowerManagement(
 
     HalpSleepHwReduced = (HalpFixedAcpiDescTable.flags & ACPI_FADT_HW_REDUCED) != 0;
     if (!HalpSleepMapPlatform())
+    {
+        HalpSleepCleanupInitialization();
         return STATUS_NOT_SUPPORTED;
+    }
 
     HalpSleepDetectProcessorFeatures();
     if (!HalpSleepAllocateProcessors())
+    {
+        HalpSleepCleanupInitialization();
         return STATUS_INSUFFICIENT_RESOURCES;
+    }
 
     for (Index = 0; Index < RTL_NUMBER_OF(HalpSleepStates); Index++)
     {
@@ -854,5 +913,7 @@ HalpInitPowerManagement(
         HalpSleepRegisterState(GetSleepType, Index);
     }
 
+    /* Only report successful initialization after platform setup has completed. */
+    HalpSleepInitialized = TRUE;
     return STATUS_SUCCESS;
 }

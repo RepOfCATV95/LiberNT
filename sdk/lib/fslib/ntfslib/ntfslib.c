@@ -584,6 +584,7 @@ NtfsChkdsk(
     ULONG BytesPerSector = 0;
     ULONG DirtyMask = 0;
     USHORT Flags = 0;
+    USHORT VerifyFlags = 0;
     BOOLEAN Locked = FALSE;
     BOOLEAN Dirty;
     NTSTATUS Status;
@@ -650,7 +651,19 @@ NtfsChkdsk(
         Status = NtfsVolumeCheck(Volume, Locked, NtfsCheckReport, &Check, &Result);
     }
     if (NT_SUCCESS(Status) && Locked && Dirty && Result.Errors == 0)
+    {
+        /* Clear the on-disk $Volume dirty bit only after a clean repair pass. */
         Status = NtfsVolumeSetFlags(Volume, 0, VOL_DIRTY);
+        if (NT_SUCCESS(Status))
+        {
+            Status = NtfsVolumeQueryFlags(Volume, &VerifyFlags);
+            if (NT_SUCCESS(Status) && (VerifyFlags & VOL_DIRTY))
+            {
+                NtfsFormatReport(Callback, "The NTFS dirty flag remains set after repair.\n");
+                Status = STATUS_DISK_CORRUPT_ERROR;
+            }
+        }
+    }
 
     if (Volume)
         NtfsVolumeDestroy(Volume);
