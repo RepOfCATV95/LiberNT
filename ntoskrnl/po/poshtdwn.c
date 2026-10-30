@@ -25,6 +25,7 @@ LIST_ENTRY PopShutdownQueue;
 KGUARDED_MUTEX PopShutdownListMutex;
 BOOLEAN PopShutdownListAvailable;
 
+extern BOOLEAN Win2KHaxor;
 
 /* PRIVATE FUNCTIONS *********************************************************/
 
@@ -160,7 +161,6 @@ PopDisplayShutdownScreen(VOID)
         /* Yes we do, cleanup for shutdown screen */
         if (!InbvCheckDisplayOwnership()) InbvAcquireDisplayOwnership();
         InbvResetDisplay();
-        // InbvEnableDisplayString(TRUE);
         DisplayShutdownBitmap();
     }
     else
@@ -227,12 +227,19 @@ PopShutdownSystem(IN POWER_ACTION SystemAction)
             //PopInvokeSystemStateHandler(PowerStateShutdownOff, NULL);
 
             PopSetSystemPowerState(PowerSystemShutdown, SystemAction);
-            KeRaiseIrqlToDpcLevel();
-            _disable();
-            HalReturnToFirmware(HalPowerDownRoutine);
+            if ( !Win2KHaxor )
+            {
+                /* The firmware refused to power us off */
+                PopShutdownHandler();
+                HalReturnToFirmware(HalPowerDownRoutine);
+            }
+            else
+            {
+                HalReturnToFirmware(HalPowerDownRoutine);
 
-            /* The firmware refused to power us off */
-            PopShutdownHandler();
+                /* The firmware refused to power us off */
+                PopShutdownHandler();
+            }
             break;
 
         default:

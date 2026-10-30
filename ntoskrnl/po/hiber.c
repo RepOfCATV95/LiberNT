@@ -3,6 +3,7 @@
  * LICENSE:     GPL-3.0-or-later (https://spdx.org/licenses/GPL-3.0-or-later)
  * PURPOSE:     Hibernation file and image writer
  * COPYRIGHT:   Copyright 2026 Ahmed ARIF <arif.ing@outlook.com>
+ *              Copyright 1997-2028 Republic of CATV 95 <catv95republic@proton.me>
  */
 
 #include <ntoskrnl.h>
@@ -10,6 +11,8 @@
 #include <reactos/hiberfil.h>
 #define NDEBUG
 #include <debug.h>
+
+#include "inbv/logo.h"
 
 #define POP_HIBER_TAG               'bHoP'
 #define POP_HIBER_STAGING_SIZE      (1024 * 1024)
@@ -441,6 +444,37 @@ PopHiberEmitRecord(
     return Status;
 }
 
+/*
+ * @implemented
+ */
+static
+VOID
+PopHiberUpdateProcess(ULONG PCT)
+{
+    ULONG RetPct = 0;
+    CHAR HiberBuf[16];
+
+    RetPct = PCT;
+    if (RetPct == 0 || RetPct>99)
+        return;
+
+    if ( InbvBootDriverInstalled )
+    {
+        InbvUpdateProgressBar(RetPct + 1);
+    }
+    else
+    {
+        RtlStringCbPrintfA(HiberBuf,
+                           sizeof(HiberBuf),
+                           "PopSave: %lu%%\n",
+                           (RetPct + 1));
+        InbvDisplayString(HiberBuf);
+    }
+}
+
+/*
+ * @implemented
+ */
 static
 NTSTATUS
 PopHiberWriteRecords(VOID)
@@ -453,6 +487,7 @@ PopHiberWriteRecords(VOID)
     ULONG Page;
     ULONG Compressed;
     ULONG Tenth = 0;
+    ULONG LastPct = 0;
     PVOID Mapping;
     NTSTATUS Status;
 
@@ -504,6 +539,11 @@ PopHiberWriteRecords(VOID)
             {
                 Tenth = (ULONG)(Written * 10 / PopHiber.DataPages);
                 DPRINT1("Writing the hibernation image: %lu%%\n", Tenth * 10);
+                if ( ((Tenth * 10) + 20) != LastPct )
+                {
+                    LastPct = ((Tenth * 10) + 20);
+                    PopHiberUpdateProcess(LastPct);
+                }
             }
         }
     }
@@ -523,6 +563,9 @@ PopHiberSystemHandler(
 
     if (!PopHiber.Prepared || Context != &PopHiber.Context || Context->Target.StubPhysical == 0)
         return STATUS_INVALID_DEVICE_STATE;
+
+    /* Put up hibernating screen as system starts hibernating process */
+    DisplayHibernationScreen();
 
     Status = PopHiber.Storage.Prepare(PopHiber.Storage.Context);
     if (!NT_SUCCESS(Status))

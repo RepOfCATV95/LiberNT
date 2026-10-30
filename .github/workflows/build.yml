@@ -1,5 +1,6 @@
 name: Build
-on: [push, pull_request]
+on:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -23,6 +24,10 @@ jobs:
             config: Debug
             ntver: '0xA00'
           - compiler: clang
+            arch: amd64
+            config: Release
+            ntver: '0xA00'
+          - compiler: clang
             arch: arm64
             config: Debug
             ntver: '0xA00'
@@ -41,6 +46,10 @@ jobs:
           - compiler: clang
             arch: ppc
             config: Debug
+            ntver: '0xA00'
+          - compiler: clang
+            arch: ppc
+            config: Release
             ntver: '0xA00'
       fail-fast: false
     runs-on: ubuntu-24.04

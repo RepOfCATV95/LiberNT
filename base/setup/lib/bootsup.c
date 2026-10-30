@@ -74,14 +74,14 @@ CreateFreeLoaderReactOSEntries(
 
     Options->OsLoadPath = ArcPath;
 
-    /* ReactOS */
-    // BootEntry->BootEntryKey = MAKESTRKEY(L"ReactOS");
-    BootEntry->FriendlyName = L"\"LiberNT\"";
+    /* RC95 */
+    // BootEntry->BootEntryKey = MAKESTRKEY(L"RC95");
+    BootEntry->FriendlyName = L"\"Republic of CATV 95 (LiberNT)\"";
     Options->OsLoadOptions  = L"/FASTDETECT";
-    AddBootStoreEntry(BootStoreHandle, BootEntry, MAKESTRKEY(L"ReactOS"));
+    AddBootStoreEntry(BootStoreHandle, BootEntry, MAKESTRKEY(L"RC95"));
 
-    /* DefaultOS=ReactOS */
-    BootOptions.NextBootEntryKey = MAKESTRKEY(L"ReactOS");
+    /* DefaultOS=RC95 */
+    BootOptions.NextBootEntryKey = MAKESTRKEY(L"RC95");
 
 #if DBG
     if (IsUnattendedSetup)
@@ -322,9 +322,9 @@ SkipThisEntry:
     if (Type == FreeLdr && wcscmp(Data->SectionName, (PWSTR)BootEntry->BootEntryKey)== 0)
     {
         RtlStringCchPrintfW(Data->SectionName, ARRAYSIZE(Data->SectionName),
-                            L"ReactOS_%lu", Data->i);
+                            L"RC95_%lu", Data->i);
         RtlStringCchPrintfW(Data->OsName, ARRAYSIZE(Data->OsName),
-                            L"\"LiberNT %lu\"", Data->i);
+                            L"\"Republic of CATV 95 (LiberNT) %lu\"", Data->i);
         Data->i++;
     }
     return STATUS_SUCCESS;
@@ -365,8 +365,8 @@ UpdateFreeLoaderIni(
     /* Create a new "ReactOS" entry if there is none already existing that suits us */
     if (!Data.UseExistingEntry)
     {
-        // RtlStringCchPrintfW(Data.SectionName, ARRAYSIZE(Data.SectionName), L"ReactOS_%lu", Data.i);
-        // RtlStringCchPrintfW(Data.OsName, ARRAYSIZE(Data.OsName), L"\"LiberNT %lu\"", Data.i);
+        // RtlStringCchPrintfW(Data.SectionName, ARRAYSIZE(Data.SectionName), L"RC95_%lu", Data.i);
+        // RtlStringCchPrintfW(Data.OsName, ARRAYSIZE(Data.OsName), L"\"Republic of CATV 95 (LiberNT) %lu\"", Data.i);
 
         BootEntry->Version = FreeLdr;
         BootEntry->BootFilePath = NULL;
@@ -415,8 +415,8 @@ UpdateBootIni(
     Data.UseExistingEntry = TRUE;
     // Data.i = 1;
     Data.ArcPath = EntryName;
-    // RtlStringCchCopyW(Data.SectionName, ARRAYSIZE(Data.SectionName), L"ReactOS");
-    RtlStringCchCopyW(Data.OsName, ARRAYSIZE(Data.OsName), L"\"LiberNT\"");
+    // RtlStringCchCopyW(Data.SectionName, ARRAYSIZE(Data.SectionName), L"RC95");
+    RtlStringCchCopyW(Data.OsName, ARRAYSIZE(Data.OsName), L"\"Republic of CATV 95 (LiberNT)\"");
 
     //
     // FIXME: We temporarily use EnumerateBootStoreEntries, until

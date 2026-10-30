@@ -46,6 +46,15 @@ typedef struct
 
 extern HINSTANCE hApplet;
 
+/* dateandtime.c */
+VOID
+GetTimes(SYSTEMTIME* st);
+
+VOID
+SetTimes(SYSTEMTIME* st);
+
+int
+GetDateTime(UINT Type);
 
 /* dateandtime.c */
 INT_PTR CALLBACK DateTimePageProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -70,8 +79,9 @@ VOID DisplayWin32Error(DWORD dwErrorCode);
 
 
 /* clock.c */
-#define CLM_STOPCLOCK (WM_USER + 1)
-#define CLM_STARTCLOCK (WM_USER + 2)
+#define CLM_STOPCLOCK   (WM_USER + 1)
+#define CLM_STARTCLOCK  (WM_USER + 2)
+#define CLM_UPDATECLOCK (WM_USER + 3)
 
 BOOL RegisterClockControl(VOID);
 VOID UnregisterClockControl(VOID);

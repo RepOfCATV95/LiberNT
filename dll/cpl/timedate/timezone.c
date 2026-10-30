@@ -276,6 +276,24 @@ ShowTimeZoneList(HWND hwnd)
                  0);
 }
 
+static VOID
+DetectTimeZoneChanges(TIME_ZONE_INFORMATION *tzi)
+{
+    SYSTEMTIME st1 = {0};
+    SYSTEMTIME st2 = {0};
+    SYSTEMTIME Time = {0};
+    FILETIME ft;
+
+    if (!tzi)
+        return;
+    GetSystemTime(&st1);
+    if (!SystemTimeToFileTime(&st1,&ft))
+        return;
+    if (!FileTimeToSystemTime(&ft,&st2))
+        return;
+    SystemTimeToTzSpecificLocalTime(tzi,&st2,&Time);
+    SystemSetLocalTime(&Time);
+}
 
 static VOID
 SetLocalTimeZone(HWND hwnd)
@@ -305,8 +323,8 @@ SetLocalTimeZone(HWND hwnd)
 
     /* Set time zone information */
     SetTimeZoneInformation(&TimeZoneInformation);
+    DetectTimeZoneChanges(&TimeZoneInformation);
 }
-
 
 /* Property page dialog callback */
 INT_PTR CALLBACK

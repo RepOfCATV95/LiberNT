@@ -13,6 +13,112 @@
 
 static WNDPROC pOldWndProc = NULL;
 
+static SHORT   wDateTime[7];
+static SHORT   wPendingDateTime[7];
+static BOOLEAN fDateDirty=FALSE;
+
+static
+VOID
+FinishedSettingDates(VOID)
+{
+    int cc;
+    
+    for (cc=0;cc<6;cc++)
+    {
+        wPendingDateTime[cc] = -1;
+    }
+}
+
+VOID
+GetTimes(SYSTEMTIME* st)
+{
+    if ( fDateDirty )
+        return;
+
+    st->wMilliseconds =  0;
+    st->wSecond      =  (WORD)wDateTime[0];
+    st->wMinute      =  (WORD)wDateTime[1];
+    st->wHour        =  (WORD)wDateTime[2];
+    st->wMonth       =  (WORD)wDateTime[3];
+    st->wDay         =  (WORD)wDateTime[4];
+    st->wYear        =  (WORD)wDateTime[5];
+    st->wDayOfWeek   =  (WORD)wDateTime[6];
+}
+
+VOID
+SetTimes(SYSTEMTIME* st)
+{
+    st->wMilliseconds = 0;
+    wDateTime[0] = (SHORT)st->wSecond;
+    wDateTime[1] = (SHORT)st->wMinute;
+    wDateTime[2] = (SHORT)st->wHour;
+    wDateTime[3] = (SHORT)st->wMonth;
+    wDateTime[4] = (SHORT)st->wDay;
+    wDateTime[5] = (SHORT)st->wYear;
+    wDateTime[6] = (SHORT)st->wDayOfWeek;
+}
+
+int
+GetDateTime(UINT Type)
+{
+    int aaa = -1;
+    switch (Type)
+    {
+        /* Second */
+        case 0:
+        {
+            aaa = (int)wDateTime[0];
+            break;
+        }
+
+        /* Minute */
+        case 1:
+        {
+            aaa = (int)wDateTime[1];
+            break;
+        }
+
+        case 2:
+        {
+            aaa = (int)wDateTime[2];
+            break;
+        }
+
+        case 3:
+        {
+            aaa = (int)wDateTime[3];
+            break;
+        }
+
+        case 4:
+        {
+            aaa = (int)wDateTime[4];
+            break;
+        }
+
+        case 5:
+        {
+            aaa = (int)wDateTime[5];
+            break;
+        }
+
+        case 6:
+        {
+            aaa = (int)wDateTime[6];
+            break;
+        }
+
+        /* Invalid date type */
+        default:
+        {
+            aaa = -1;
+            break;
+        }
+    }
+    
+    return aaa;
+}
+
 BOOL
 SystemSetLocalTime(LPSYSTEMTIME lpSystemTime)
 {
@@ -71,39 +177,102 @@ SystemSetLocalTime(LPSYSTEMTIME lpSystemTime)
     return Ret;
 }
 
+static
+VOID
+ProcessLocalTime(SYSTEMTIME st)
+{
+    TIME_ZONE_INFORMATION tzi;
+    DWORD dwTZI;
+    SYSTEMTIME procUTC,utcSt,aTime;
+    FILETIME ft;
+    BOOLEAN bFail = FALSE;
 
-static VOID
+    RtlZeroMemory(&procUTC, sizeof(SYSTEMTIME));
+    RtlZeroMemory(&utcSt, sizeof(SYSTEMTIME));
+    RtlZeroMemory(&aTime, sizeof(SYSTEMTIME));
+    RtlZeroMemory(&tzi, sizeof(TIME_ZONE_INFORMATION));
+
+    dwTZI = GetTimeZoneInformation(&tzi);
+    bFail = (dwTZI == TIME_ZONE_ID_UNKNOWN || dwTZI == TIME_ZONE_ID_INVALID);
+    
+    /* If time zone is unknown or invalid, then set it as local time without time zone */
+    if ( bFail )
+    {
+        SystemSetLocalTime(&st);
+        return;
+    }
+    
+    TzSpecificLocalTimeToSystemTime(&tzi, &st, &procUTC);
+    bFail = (!SystemTimeToFileTime(&procUTC, &ft));
+    
+    if ( bFail )
+    {
+        SystemSetLocalTime(&st);
+        SetTimes(&aTime);
+        return;
+    }
+    
+    bFail = (!FileTimeToSystemTime(&ft, &utcSt));
+    if ( bFail )
+    {
+        SystemSetLocalTime(&st);
+        SetTimes(&aTime);
+        return;
+    }
+    
+    dwTZI = GetTimeZoneInformation(&tzi);
+    bFail = (dwTZI == TIME_ZONE_ID_UNKNOWN || dwTZI == TIME_ZONE_ID_INVALID);
+    
+    /* If time zone is unknown or invalid, then set it as local time without time zone */
+    if ( bFail )
+    {
+        SystemSetLocalTime(&st);
+        SetTimes(&aTime);
+        return;
+    }
+    
+    SystemTimeToTzSpecificLocalTime(&tzi,&utcSt,&aTime);
+    SystemSetLocalTime(&aTime);
+    SetTimes(&aTime);
+}
+
+static
+VOID
 SetLocalSystemTime(HWND hwnd)
 {
     SYSTEMTIME Time;
+    int cc;
 
-    if (DateTime_GetSystemtime(GetDlgItem(hwnd,
-                                          IDC_TIMEPICKER),
-                               &Time) == GDT_VALID &&
-        SendMessageW(GetDlgItem(hwnd,
-                                IDC_MONTHCALENDAR),
-                     MCCM_GETDATE,
-                     (WPARAM)&Time,
-                     0))
-    {
-        SystemSetLocalTime(&Time);
+    RtlZeroMemory(&Time, sizeof(SYSTEMTIME));
+    
+    Time.wMilliseconds = 0;
+    Time.wSecond = wPendingDateTime[0];
+    Time.wMinute = wPendingDateTime[1];
+    Time.wHour = wPendingDateTime[2];
+    Time.wMonth = wPendingDateTime[3];
+    Time.wDay = wPendingDateTime[4];
+    Time.wYear = wPendingDateTime[5];
+    Time.wDayOfWeek = wPendingDateTime[6];
 
-        SetWindowLongPtrW(hwnd,
+    ProcessLocalTime(Time);
+
+    SetWindowLongPtrW(hwnd,
                           DWLP_MSGRESULT,
                           PSNRET_NOERROR);
 
-        SendMessageW(GetDlgItem(hwnd,
-                                IDC_MONTHCALENDAR),
-                     MCCM_RESET,
-                     (WPARAM)&Time,
-                     0);
+    SendMessageW(GetDlgItem(hwnd,IDC_MONTHCALENDAR),
+                 MCCM_RESET,
+                 (WPARAM)&Time,
+                 0);
 
-        /* Broadcast the time change message */
-        SendMessageW(HWND_BROADCAST,
-                     WM_TIMECHANGE,
-                     0,
-                     0);
-    }
+    /* Broadcast the time change message */
+    SendMessageW(HWND_BROADCAST,
+                 WM_TIMECHANGE,
+                 0,
+                 0);
+    
+    for (cc=0;cc<6;cc++)
+        wPendingDateTime[cc] = -1;
 }
 
 
@@ -269,10 +438,16 @@ DateTimePageProc(HWND hwndDlg,
 {
     SYSTEMTIME st;
     GetLocalTime(&st);
+    if (!fDateDirty)
+        SetTimes(&st);
 
     switch (uMsg)
     {
         case WM_INITDIALOG:
+            int cc;
+            
+            for (cc=0;cc<6;cc++)
+                wPendingDateTime[cc] = -1;
             FillMonthsComboBox(GetDlgItem(hwndDlg,
                                           IDC_MONTHCB));
 
@@ -282,14 +457,14 @@ DateTimePageProc(HWND hwndDlg,
 
             pOldWndProc = (WNDPROC)SetWindowLongPtrW(GetDlgItem(hwndDlg, IDC_TIMEPICKER), GWLP_WNDPROC, (LONG_PTR)DTPProc);
 
-            SetTimer(hwndDlg, ID_TIMER, 1000 - st.wMilliseconds, NULL);
+            SetTimer(hwndDlg, ID_TIMER, 450, 0L);
             break;
 
         case WM_TIMER:
             SendMessageW(GetDlgItem(hwndDlg, IDC_TIMEPICKER), DTM_SETSYSTEMTIME, GDT_VALID, (LPARAM) &st);
 
             // Reset timeout.
-            SetTimer(hwndDlg, ID_TIMER, 1000 - st.wMilliseconds, NULL);
+            SetTimer(hwndDlg, ID_TIMER, 450, 0L);
             break;
 
         case WM_COMMAND:
@@ -303,6 +478,15 @@ DateTimePageProc(HWND hwndDlg,
                                                       (WORD) -1,
                                                       GetCBSelectedMonth((HWND)lParam),
                                                       (WORD) -1);
+                        wPendingDateTime[0] = wDateTime[0];
+                        wPendingDateTime[1] = wDateTime[1];
+                        wPendingDateTime[2] = wDateTime[2];
+                        wPendingDateTime[3] = (GetCBSelectedMonth((HWND)lParam) + 1);
+                        wPendingDateTime[4] = wDateTime[4];
+                        wPendingDateTime[5] = wDateTime[5];
+                        wPendingDateTime[6] = wDateTime[6];
+                        fDateDirty = TRUE;
+                        PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
                     }
                     break;
             }
@@ -316,6 +500,7 @@ DateTimePageProc(HWND hwndDlg,
         case WM_NOTIFY:
         {
             LPNMHDR lpnm = (LPNMHDR)lParam;
+            LPNMDATETIMECHANGE lpDteChange = (LPNMDATETIMECHANGE)lParam;
 
             switch (lpnm->idFrom)
             {
@@ -327,7 +512,18 @@ DateTimePageProc(HWND hwndDlg,
                             SHORT wYear;
                             LPNMUPDOWN updown = (LPNMUPDOWN)lpnm;
                             wYear = (SHORT)SendMessageW(GetDlgItem(hwndDlg, IDC_YEAR), UDM_GETPOS, 0, 0);
+                            
+                            wPendingDateTime[0] = wDateTime[0];
+                            wPendingDateTime[1] = wDateTime[1];
+                            wPendingDateTime[2] = wDateTime[2];
+                            wPendingDateTime[3] = wDateTime[3];
+                            wPendingDateTime[4] = wDateTime[4];
+                            wPendingDateTime[5] = wYear;
+                            wPendingDateTime[6] = wDateTime[6];
+                            if ( wDateTime[6] != wPendingDateTime[6] )
+                                wDateTime[6] = wPendingDateTime[6];
                             /* Enable the 'Apply' button */
+                            fDateDirty = TRUE;
                             PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
                             ChangeMonthCalDate(GetDlgItem(hwndDlg,
                                                IDC_MONTHCALENDAR),
@@ -350,9 +546,41 @@ DateTimePageProc(HWND hwndDlg,
                             SendDlgItemMessageW(hwndDlg, IDC_CLOCKWND, CLM_STOPCLOCK,
                                                 0, 0);
 
-                            // TODO: Set the clock to the input time.
+                            // Set the clock to the input time.
+                            if (lpDteChange->dwFlags == GDT_VALID)
+                            {
+                                SYSTEMTIME datePart = {0};
+                                int cc;
+                                
+                                SendMessageW(GetDlgItem(hwndDlg, IDC_MONTHCALENDAR),
+                                             MCCM_GETDATE,
+                                             (WPARAM)&datePart,
+                                             0);
+                                datePart.wSecond = lpDteChange->st.wSecond;
+                                datePart.wMinute = lpDteChange->st.wMinute;
+                                datePart.wHour   = lpDteChange->st.wHour;
+                                
+                                wPendingDateTime[0] = datePart.wSecond;
+                                wPendingDateTime[1] = datePart.wMinute;
+                                wPendingDateTime[2] = datePart.wHour;
+                                wPendingDateTime[3] = datePart.wMonth;
+                                wPendingDateTime[4] = datePart.wDay;
+                                wPendingDateTime[5] = datePart.wYear;
+                                wPendingDateTime[6] = datePart.wDayOfWeek;
+                                
+                                for (cc=0;cc<7;cc++)
+                                {
+                                    if (wDateTime[cc] != wPendingDateTime[cc])
+                                        wDateTime[cc] = wPendingDateTime[cc];
+                                }
+                                
+                                SendMessageW(GetDlgItem(hwndDlg, IDC_CLOCKWND), CLM_UPDATECLOCK,
+                                             0, 
+                                             0);
+                            }
 
                             /* Enable the 'Apply' button */
+                            fDateDirty = TRUE;
                             PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
                             break;
                     }
@@ -363,6 +591,7 @@ DateTimePageProc(HWND hwndDlg,
                     {
                         case MCCN_SELCHANGE:
                             /* Enable the 'Apply' button */
+                            fDateDirty = TRUE;
                             PropSheet_Changed(GetParent(hwndDlg), hwndDlg);
                             break;
 
@@ -382,12 +611,13 @@ DateTimePageProc(HWND hwndDlg,
 
                         case PSN_APPLY:
                             SetLocalSystemTime(hwndDlg);
-
+                            fDateDirty = FALSE;
                             /* Tell the clock to start ticking */
                             SendDlgItemMessageW(hwndDlg, IDC_CLOCKWND, CLM_STARTCLOCK,
                                                 0, 0);
 
-                            SetTimer(hwndDlg, ID_TIMER, 1000 - st.wMilliseconds, NULL);
+                            SetTimer(hwndDlg, ID_TIMER, 450, 0L);
+                            FinishedSettingDates();
                             return TRUE;
                     }
                     break;
@@ -402,6 +632,11 @@ DateTimePageProc(HWND hwndDlg,
                          MCCM_RESET,
                          0,
                          0);
+            if (fDateDirty)
+            {
+                FinishedSettingDates();
+                fDateDirty = FALSE;
+            }
             break;
 
         case WM_DESTROY:

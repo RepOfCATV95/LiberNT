@@ -1272,8 +1272,9 @@ WINE_DEFAULT_DEBUG_CHANNEL(shell);
 const char * const SHELL_Authors[] =
 {
     "Copyright 2026 LiberNT Team",
-    "Copyright 1993-"COPYRIGHT_YEAR" WINE team",
-    "Copyright 1998-"COPYRIGHT_YEAR" ReactOS Team",
+    "Copyright 1993-2026 WINE team",
+    "Copyright 1996-2026 ReactOS Project",
+    "Copyright 1997-"COPYRIGHT_YEAR" Republic of CATV 95",
 #ifdef ENABLE_FEX_ARM64EC
     "Copyright 2019 Ryan Houdek (FEX-Emu)",
 #endif
@@ -1282,7 +1283,7 @@ const char * const SHELL_Authors[] =
     "Copyright 2014 Khronos Group, Valve, LunarG (Vulkan loader)",
 #endif
 #ifdef ENABLE_FFMPEG
-    "Copyright 2000-"COPYRIGHT_YEAR" the FFmpeg developers",
+    "Copyright 2000-2026 the FFmpeg developers",
 #endif
     0
 };

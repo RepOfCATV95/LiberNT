@@ -5,295 +5,672 @@
  * PURPOSE:     Draws the analog clock
  * COPYRIGHT:   Copyright 2006 Ged Murphy <gedmurphy@gmail.com>
  *              Copyright 2007 Eric Kohl
+ *              Copyright 1997-2028 Republic of CATV 95 <catv95republic@proton.me>
  */
 
-/* Code based on clock.c from Programming Windows, Charles Petzold */
+/* Code based on clock.c from DATETIME by Republic of CATV 95 */
 
 #include "timedate.h"
+#include "clock.h"
 
-#include <math.h>
-
-typedef struct _CLOCKDATA
-{
-    HBRUSH hGreyBrush;
-    HPEN hGreyPen;
-    INT cxClient;
-    INT cyClient;
-    SYSTEMTIME stCurrent;
-    SYSTEMTIME stPrevious;
-    BOOL bTimer;
-} CLOCKDATA, *PCLOCKDATA;
-
-
-#define TWOPI (2 * 3.14159)
+#ifdef WIN32
+  #define MoveTo(hDC,x,y)     MoveToEx(hDC,x,y,NULL)
+  #define GetWindowPtr(w,o)   GetWindowLongPtrW(w,o)
+  #define SetWindowPtr(w,o,p) SetWindowLongPtrW(w,o,(LONG_PTR)(p))
+#else
+  #define GetWindowPtr(w,o)   GetWindowWord(w,o)
+  #define SetWindowPtr(w,o,p) SetWindowWord(w,o,p)
+#endif
 
 static const WCHAR szClockWndClass[] = L"ClockWndClass";
 
-static VOID
-RotatePoint(POINT pt[], INT iNum, INT iAngle)
+LRESULT
+CALLBACK
+ClockWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+
+void SetClockTimes(ClockHandTime* pt, PTDDATAOBJ PTDate)
 {
-     INT i;
-     POINT ptTemp;
+    if (!PTDate)
+        return;
 
-     for (i = 0 ; i < iNum ; i++)
-     {
-          ptTemp.x = (INT) (pt[i].x * cos (TWOPI * iAngle / 360) +
-               pt[i].y * sin (TWOPI * iAngle / 360));
-
-          ptTemp.y = (INT) (pt[i].y * cos (TWOPI * iAngle / 360) -
-               pt[i].x * sin (TWOPI * iAngle / 360));
-
-          pt[i] = ptTemp;
-     }
+    pt->handSec  = GetDateTime(0);
+    pt->handMin  = GetDateTime(1);
+    pt->handHour = GetDateTime(2);
 }
 
-
-static INT
-DrawClock(HDC hdc, PCLOCKDATA pClockData)
+void CreateClockObject(PTDDATAOBJ PTDate)
 {
-     INT iAngle,Radius;
-     POINT pt[3];
-     HBRUSH hBrushOld;
-     HPEN hPenOld = NULL;
-
-     /* Grey brush to fill the dots */
-     hBrushOld = SelectObject(hdc, pClockData->hGreyBrush);
-
-     hPenOld = GetCurrentObject(hdc, OBJ_PEN);
-
-     // TODO: Check if this conversion is correct resp. usable
-     Radius = min(pClockData->cxClient,pClockData->cyClient) * 2;
-
-     for (iAngle = 0; iAngle < 360; iAngle += 6)
-     {
-          /* Starting coords */
-          pt[0].x = 0;
-          pt[0].y = Radius;
-
-          /* Rotate start coords */
-          RotatePoint(pt, 1, iAngle);
-
-          /* Determine whether it's a big dot or a little dot
-           * i.e. 1-4 or 5, 6-9 or 10, 11-14 or 15 */
-          if (iAngle % 5)
-          {
-                pt[2].x = pt[2].y = 7;
-                SelectObject(hdc, pClockData->hGreyPen);
-          }
-          else
-          {
-              pt[2].x = pt[2].y = 16;
-              SelectObject(hdc, GetStockObject(BLACK_PEN));
-          }
-
-          pt[0].x -= pt[2].x / 2;
-          pt[0].y -= pt[2].y / 2;
-
-          pt[1].x  = pt[0].x + pt[2].x;
-          pt[1].y  = pt[0].y + pt[2].y;
-
-          Ellipse(hdc, pt[0].x, pt[0].y, pt[1].x, pt[1].y);
-     }
-
-     SelectObject(hdc, hBrushOld);
-     SelectObject(hdc, hPenOld);
-     return Radius;
+    if (!PTDate)
+        return;
+    
+    PTDate->hDarkHandColor     =  CreateSolidBrush(DARK_COLOR_CLOCK);
+    PTDate->hLightHandColor    =  CreateSolidBrush(LIGHT_COLOR_CLOCK);
+    PTDate->hSecondPenColor    =  CreatePen(0, 1, GetSysColor(SECOND_HAND_COLOR_CLOCK));
+    PTDate->hDarkBorderColor   =  CreateSolidBrush(DARK_COLOR_CLOCK);
+    PTDate->hLightBorderColor  =  CreateSolidBrush(LIGHT_COLOR_CLOCK);
 }
 
-
-static VOID
-DrawHands(HDC hdc, SYSTEMTIME * pst, BOOL fChange, INT Radius)
+void RemoveClockObject(PTDDATAOBJ PTDate)
 {
-     POINT pt[3][5] = { {{0, (INT)-Radius/6}, {(INT)Radius/9, 0},
-	     {0, (INT)Radius/1.8}, {(INT)-Radius/9, 0}, {0, (INT)-Radius/6}},
-     {{0, (INT)-Radius/4.5}, {(INT)Radius/18, 0}, {0, (INT) Radius*0.89},
-	     {(INT)-Radius/18, 0}, {0, (INT)-Radius/4.5}},
-     {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, (INT) Radius*0.89}} };
-     INT i, iAngle[3];
-     POINT ptTemp[3][5];
-
-     /* Black pen for outline, white brush for fill */
-     SelectObject(hdc, GetStockObject(BLACK_PEN));
-     SelectObject(hdc, GetStockObject(WHITE_BRUSH));
-
-     iAngle[0] = (pst->wHour * 30) % 360 + pst->wMinute / 2;
-     iAngle[1] = pst->wMinute * 6;
-     iAngle[2] = pst->wSecond * 6;
-
-     CopyMemory(ptTemp, pt, sizeof(pt));
-
-     for (i = fChange ? 0 : 2; i < 3; i++)
-     {
-          RotatePoint(ptTemp[i], 5, iAngle[i]);
-
-          Polygon(hdc, ptTemp[i], 5);
-     }
+    if (!PTDate)
+        return;
+    if (PTDate->hDarkHandColor)
+        DeleteObject(PTDate->hDarkHandColor);
+    if (PTDate->hLightHandColor)
+        DeleteObject(PTDate->hLightHandColor);
+    if (PTDate->hSecondPenColor)
+        DeleteObject(PTDate->hSecondPenColor);
+    if (PTDate->hDarkBorderColor)
+        DeleteObject(PTDate->hDarkBorderColor);
+    if (PTDate->hLightBorderColor)
+        DeleteObject(PTDate->hLightBorderColor);
 }
 
+void ResizeClock(PTDDATAOBJ PTDate, int newWidth, int newHeight)
+{
+     if (!PTDate)
+         return;
 
-static LRESULT CALLBACK
-ClockWndProc(HWND hwnd,
-             UINT uMsg,
+     /* Do nothing only when both dimensions are unchanged */
+     if (newWidth == PTDate->ccWidth && newHeight == PTDate->ccHeight)
+         return;
+     
+     /* Set size of clock */
+     PTDate->ccWidth = newWidth;
+     PTDate->ccHeight = newHeight;
+     
+     /* Set center of the clock */
+     PTDate->ccLocX = newWidth / 2;
+     PTDate->ccLocY = newHeight / 2;
+}
+
+void DrawClockFace(HDC hDC, PTDDATAOBJ PTDate)
+{
+    int cx, cy, radius;
+    int i;
+    int x1, y1, x2, y2;
+    int markerLength;
+    double angle;
+    HPEN hPen, hOldPen;
+    HPEN hHourPen, hMinutePen;
+    HBRUSH hBrush, hOldBrush;
+
+    if (!hDC || !PTDate)
+        return;
+
+    if (PTDate->ccWidth <= 0 || PTDate->ccHeight <= 0)
+        return;
+
+    cx = PTDate->ccLocX;
+    cy = PTDate->ccLocY;
+
+    radius = (PTDate->ccWidth < PTDate->ccHeight ?
+              PTDate->ccWidth : PTDate->ccHeight) / 2 - 2;
+
+    if (radius <= 0)
+        return;
+
+    /* Create the clock face background and border pens. */
+    hBrush = CreateSolidBrush(BKG_DARK_COLOR_CLOCK);
+    hPen = CreatePen(PS_SOLID, 2, BKG_BORDER_LIGHT_COLOR_CLOCK);
+    hHourPen = CreatePen(PS_SOLID, 3, LIGHT_COLOR_CLOCK);
+    hMinutePen = CreatePen(PS_SOLID, 2, DARK_COLOR_CLOCK);
+
+    if (!hBrush || !hPen || !hHourPen || !hMinutePen)
+    {
+        if (hBrush)
+            DeleteObject(hBrush);
+        if (hPen)
+            DeleteObject(hPen);
+        if (hHourPen)
+            DeleteObject(hHourPen);
+        if (hMinutePen)
+            DeleteObject(hMinutePen);
+
+        return;
+    }
+
+    /*
+     * Draw the outer circular border and its background.
+     * The middle ring has a separate background color.
+     * The inner circle is the main clock face.
+     */
+    hOldPen = (HPEN)SelectObject(hDC, hPen);
+    hOldBrush = (HBRUSH)SelectObject(hDC, hBrush);
+
+    /* Outer circular border and background. */
+    Ellipse(hDC,
+            cx - radius,
+            cy - radius,
+            cx + radius + 1,
+            cy + radius + 1);
+
+    /* Background between the inner and outer borders. */
+    {
+        HBRUSH hRingBrush;
+        HBRUSH hPreviousBrush;
+        HPEN hPreviousPen;
+
+        hRingBrush = PTDate->hLightBorderColor;
+
+        if (hRingBrush)
+        {
+            hPreviousPen = (HPEN)SelectObject(hDC, hPen);
+            hPreviousBrush = (HBRUSH)SelectObject(
+                hDC, hRingBrush);
+
+            Ellipse(hDC,
+                    cx - radius + 4,
+                    cy - radius + 4,
+                    cx + radius - 3,
+                    cy + radius - 3);
+
+            SelectObject(hDC, hPreviousBrush);
+            SelectObject(hDC, hPreviousPen);
+
+            DeleteObject(hRingBrush);
+        }
+    }
+
+    /* Inner circular border and main clock face. */
+    {
+        HBRUSH hFaceBrush;
+        HBRUSH hPreviousBrush;
+        HPEN hPreviousPen;
+
+        hFaceBrush = PTDate->hDarkBorderColor;
+
+        if (hFaceBrush)
+        {
+            hPreviousPen = (HPEN)SelectObject(hDC, hPen);
+            hPreviousBrush = (HBRUSH)SelectObject(
+                hDC, hFaceBrush);
+
+            if (radius > 8)
+            {
+                Ellipse(hDC,
+                        cx - radius + 8,
+                        cy - radius + 8,
+                        cx + radius - 7,
+                        cy + radius - 7);
+            }
+
+            SelectObject(hDC, hPreviousBrush);
+            SelectObject(hDC, hPreviousPen);
+
+            DeleteObject(hFaceBrush);
+        }
+    }
+
+    /* Twelve hour marks, with 12 at the top. */
+    SelectObject(hDC, hHourPen);
+
+    for (i = 0; i < 12; ++i)
+    {
+        angle = ((double)i * 30.0 - 90.0)
+                * CLOCK_PI / 180.0;
+
+        markerLength = radius / 5;
+
+        x1 = cx + (int)((double)(radius - 7)
+                        * cos(angle));
+        y1 = cy + (int)((double)(radius - 7)
+                        * sin(angle));
+
+        x2 = cx + (int)((double)(radius - markerLength)
+                        * cos(angle));
+        y2 = cy + (int)((double)(radius - markerLength)
+                        * sin(angle));
+
+        MoveTo(hDC, x1, y1);
+        LineTo(hDC, x2, y2);
+    }
+
+    /* Sixty minute marks, with longer marks at each hour. */
+    SelectObject(hDC, hMinutePen);
+
+    for (i = 0; i < 60; ++i)
+    {
+        /* The hour marks are already drawn above. */
+        if (i % 5 == 0)
+            continue;
+
+        angle = ((double)i * 6.0 - 90.0)
+                * CLOCK_PI / 180.0;
+
+        markerLength = radius / 20;
+
+        x1 = cx + (int)((double)(radius - 7)
+                        * cos(angle));
+        y1 = cy + (int)((double)(radius - markerLength)
+                        * sin(angle));
+
+        x2 = cx + (int)((double)(radius - markerLength)
+                        * cos(angle));
+        y2 = cy + (int)((double)(radius - markerLength)
+                        * sin(angle));
+
+        MoveTo(hDC, x1, y1);
+        LineTo(hDC, x2, y2);
+    }
+
+    /* Draw the central pivot. */
+    SelectObject(hDC, hPen);
+    SelectObject(hDC, hBrush);
+
+    if (radius >= 4)
+    {
+        Ellipse(hDC,
+                cx - 3,
+                cy - 3,
+                cx + 4,
+                cy + 4);
+    }
+
+    /* Restore selected objects before deleting temporary GDI objects. */
+    SelectObject(hDC, hOldBrush);
+    SelectObject(hDC, hOldPen);
+
+    DeleteObject(hBrush);
+    DeleteObject(hPen);
+    DeleteObject(hHourPen);
+    DeleteObject(hMinutePen);
+}
+
+void
+DrawFatHand(HDC hDC, PTDDATAOBJ PTDate, int X, int Y,
+            BOOL IsHourHand)
+{
+    POINT points[4];
+    double angle;
+    double length;
+    double tailLength;
+    double halfWidth;
+    double shoulderPos;
+    double dx, dy, px, py;
+    int hour, minute;
+    int curX,curY;
+    HBRUSH hBrush, hOldBrush;
+    HPEN hOldPen, hPen;
+    int radius,cumMinute;
+
+    if (!hDC || !PTDate)
+        return;
+
+    radius = (PTDate->ccWidth < PTDate->ccHeight ?
+              PTDate->ccWidth : PTDate->ccHeight) / 2;
+
+    if (radius <= 0)
+        return;
+        
+    curX = X;
+    curY = Y;
+
+    hour = PTDate->curClockTime.handHour % 12;
+    if (hour < 0)
+        hour += 12;
+
+    minute = PTDate->curClockTime.handMin;
+    if (minute < 0)
+        minute = 0;
+    if (minute > 59)
+        minute = 59;
+
+    cumMinute = 0;
+    if ( minute >= 12 ) cumMinute += 12;
+    if ( minute >= 24 ) cumMinute += 12;
+    if ( minute >= 36 ) cumMinute += 12;
+    if ( minute >= 48 ) cumMinute += 12;
+
+    if (IsHourHand)
+    {
+        /* Hour hand advances gradually as the minutes pass. */
+        angle = ((double)hour + (double)cumMinute / 60.0) *
+                30.0 * CLOCK_PI / 180.0 - CLOCK_PI / 2.0;
+
+        length = (double)radius * 0.625;
+        tailLength = (double)radius * 0.13;
+        halfWidth = (double)radius * 0.055;
+        shoulderPos = length * 0.15;
+
+        hBrush = PTDate->hDarkHandColor;
+        hPen = CreatePen(PS_SOLID, 1, GetSysColor(DARK_COLOR_CLOCK));
+    }
+    else
+    {
+        angle = (double)minute * 6.0 *
+                CLOCK_PI / 180.0 - CLOCK_PI / 2.0;
+
+        length = (double)radius * 0.75;
+        tailLength = (double)radius * 0.18;
+        halfWidth = (double)radius * 0.055;
+        shoulderPos = length * 0.15;
+
+        hBrush = PTDate->hLightHandColor;
+        hPen = CreatePen(PS_SOLID, 1, GetSysColor(LIGHT_COLOR_CLOCK));
+    }
+
+    if (!hBrush)
+        return;
+
+    /* Unit vector along the hand and perpendicular to it. */
+    dx = cos(angle);
+    dy = sin(angle);
+    px = -dy;
+    py = dx;
+
+    /*
+     * Four-point kite-shaped polygon:
+     * pointed front, broad shoulders, and pointed rear tail.
+     */
+    points[0].x = curX + (int)(dx * length);
+    points[0].y = curY + (int)(dy * length);
+
+    points[1].x = curX + (int)(dx * shoulderPos
+                            + px * halfWidth);
+    points[1].y = curY + (int)(dy * shoulderPos
+                            + py * halfWidth);
+
+    points[2].x = curX - (int)(dx * tailLength);
+    points[2].y = curY - (int)(dy * tailLength);
+
+    points[3].x = curX + (int)(dx * shoulderPos
+                            - px * halfWidth);
+    points[3].y = curY + (int)(dy * shoulderPos
+                            - py * halfWidth);
+
+    hOldBrush = (HBRUSH)SelectObject(hDC, hBrush);
+    hOldPen   = (HPEN)SelectObject(hDC, hPen);
+    
+    SelectObject(hDC, GetStockObject(NULL_PEN));
+    Polygon(hDC, points, 4);
+
+    SelectObject(hDC, hOldBrush);
+    SelectObject(hDC, hOldPen);
+}
+
+void
+DrawSecondHand(HDC hDC, PTDDATAOBJ PTDate, int X, int Y)
+{
+    int rSecond;
+    int radius;
+    int x2, y2;
+    double angle;
+    HPEN hPen, hOldPen;
+
+    if (!hDC || !PTDate)
+    {
+        return;
+    }
+
+    radius = (PTDate->ccWidth < PTDate->ccHeight ?
+              PTDate->ccWidth : PTDate->ccHeight) / 2;
+
+    if (radius <= 0)
+        return;
+
+    rSecond = PTDate->curClockTime.handSec % 60;
+    if (rSecond < 0)
+        rSecond += 60;
+
+    angle = (double)rSecond * 6.0 *
+            CLOCK_PI / 180.0 - CLOCK_PI / 2.0;
+
+    /* Slightly longer than the minute hand. */
+    x2 = X + (int)((double)radius * 0.77 * cos(angle));
+    y2 = Y + (int)((double)radius * 0.77 * sin(angle));
+
+    hPen = PTDate->hSecondPenColor;
+    if (!hPen)
+        return;
+
+    hOldPen = (HPEN)SelectObject(hDC, hPen);
+
+    MoveTo(hDC, X, Y);
+    SelectObject(hDC, hPen);
+    LineTo(hDC, x2, y2);
+
+    SelectObject(hDC, hOldPen);
+    DeleteObject(hPen);
+}
+
+void
+DrawHands(HDC hDC, PTDDATAOBJ PTDate, BOOL bRepainting)
+{
+    int hourX,hourY,minX,minY,secX,secY;
+
+    if (!PTDate || !hDC)
+    {
+        return;
+    }
+
+    if (bRepainting)
+    {
+        hourX = (PTDate->ccLocX+4);
+        hourY = (PTDate->ccLocY);
+        minX  = (PTDate->ccLocX+2);
+        minY  = (PTDate->ccLocY);
+        secX  = (PTDate->ccLocX);
+        secY  = (PTDate->ccLocY);
+
+        DrawSecondHand(hDC, PTDate, secX, secY);
+        DrawFatHand(hDC, PTDate, hourX, hourY, TRUE);
+        DrawFatHand(hDC, PTDate, minX, minY, FALSE);
+        SetBkMode(hDC, TRANSPARENT);
+        DrawSecondHand(hDC, PTDate, secX, secY);
+    }
+    else
+    {
+        hourX = (PTDate->ccLocX+4);
+        hourY = (PTDate->ccLocY);
+        minX  = (PTDate->ccLocX+2);
+        minY  = (PTDate->ccLocY);
+        secX  = (PTDate->ccLocX);
+        secY  = (PTDate->ccLocY);
+	
+        DrawSecondHand(hDC, PTDate, secX, secY);
+        DrawFatHand(hDC, PTDate, hourX, hourY, TRUE);
+        DrawFatHand(hDC, PTDate, minX, minY, FALSE);
+        SetBkMode(hDC, TRANSPARENT);
+        DrawSecondHand(hDC, PTDate, secX, secY);
+    }
+}
+
+void UpdateClocks(HWND hWnd, PTDDATAOBJ PTDate)
+{
+    HDC hDC;
+	
+    if (!PTDate)
+    {
+        return;
+    }
+
+    SetClockTimes(&(PTDate->curClockTime), PTDate);
+    if ((PTDate->curClockTime.handSec == PTDate->oldClockTime.handSec)
+        && (PTDate->curClockTime.handMin == PTDate->oldClockTime.handMin)
+        && (PTDate->curClockTime.handHour == PTDate->oldClockTime.handHour))
+    {
+        return;
+    }
+
+    hDC = GetDC(hWnd);
+    DrawClockFace(hDC, PTDate);
+    DrawHands(hDC, PTDate, FALSE);
+    ReleaseDC(hWnd, hDC);
+}
+
+LRESULT
+CALLBACK
+ClockWndProc(HWND hWnd,
+             UINT message,
              WPARAM wParam,
              LPARAM lParam)
 {
-    PCLOCKDATA pClockData;
-    HDC hdc, hdcMem;
+    HDC hDC;
     PAINTSTRUCT ps;
-
-    pClockData = (PCLOCKDATA)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-
-    switch (uMsg)
+    PTDDATAOBJ PTDate;
+    
+    PTDate = (PTDDATAOBJ)GetWindowPtr(hWnd, GWLP_USERDATA);
+    switch (message)
     {
-        case WM_CREATE:
-            pClockData = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(CLOCKDATA));
-            SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)pClockData);
+        case (WM_CREATE):
+        {
+            SYSTEMTIME st = {0};
+            
+            RtlZeroMemory(&st, sizeof(SYSTEMTIME));
+            GetTimes(&st);
+            PTDate = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(TDDATAOBJ));
+            if (!PTDate)
+                return (-1);
+            SetWindowPtr(hWnd, GWLP_USERDATA, PTDate);
+            
+            CreateClockObject(PTDate);
 
-            pClockData->hGreyPen = CreatePen(PS_SOLID, 1, RGB(128, 128, 128));
-            pClockData->hGreyBrush = CreateSolidBrush(RGB(128, 128, 128));
+            hDC = GetDC(hWnd);
+            SetLayout(hDC, LAYOUT_BITMAPORIENTATIONPRESERVED);
+            ReleaseDC(hWnd, hDC);
 
-            GetLocalTime(&pClockData->stCurrent);
-            pClockData->stPrevious = pClockData->stCurrent;
-
-            pClockData->bTimer = (SetTimer(hwnd, ID_TIMER, 1000 - pClockData->stCurrent.wMilliseconds, NULL) != 0);
-            break;
-
-        case WM_SIZE:
-            pClockData->cxClient = LOWORD(lParam);
-            pClockData->cyClient = HIWORD(lParam);
-            break;
-
-        case WM_TIMECHANGE:
-        case WM_TIMER:
-            GetLocalTime(&pClockData->stCurrent);
-            InvalidateRect(hwnd, NULL, FALSE);
-            pClockData->stPrevious = pClockData->stCurrent;
-
-            // Reset timeout.
-            if (pClockData->bTimer)
+            SetClockTimes(&(PTDate->curClockTime),PTDate);
+            do
             {
-                SetTimer(hwnd, ID_TIMER, 1000 - pClockData->stCurrent.wMilliseconds, NULL);
+                 SetClockTimes(&(PTDate->oldClockTime),PTDate);
+            } while ((PTDate->curClockTime.handSec == PTDate->oldClockTime.handSec)
+                     && (PTDate->curClockTime.handMin == PTDate->oldClockTime.handMin)
+                     && (PTDate->curClockTime.handHour == PTDate->oldClockTime.handHour));
+            ResizeClock(PTDate,
+                        ((LPCREATESTRUCT)lParam)->cx,
+                        ((LPCREATESTRUCT)lParam)->cy);
+            SetTimer(hWnd, ID_CLOCK_TIMER, ID_CLOCK_MSEC, 0L);
+            break;
+        }
+
+        case (WM_SIZE):
+        {
+            if (PTDate)
+            {
+                ResizeClock(PTDate, (int)LOWORD(lParam), (int)HIWORD(lParam));
             }
             break;
+        }
 
-        case WM_PAINT:
-            hdc = BeginPaint(hwnd, &ps);
+        case (WM_SYSCOLORCHANGE):
+        {
+            RemoveClockObject(PTDate);
+            CreateClockObject(PTDate);
+            break;
+        }
 
-            hdcMem = CreateCompatibleDC(hdc);
-            if (hdcMem)
+        case (WM_TIMECHANGE):
+        {
+            InvalidateRect(hWnd, NULL, TRUE);
+        }
+        case (WM_TIMER):
+        {
+            SetClockTimes(&(PTDate->curClockTime), PTDate);
+            do
             {
-                HBITMAP hBmp, hBmpOld;
+                SetClockTimes(&(PTDate->oldClockTime), PTDate);
+            } while ((PTDate->curClockTime.handSec == PTDate->oldClockTime.handSec)
+                  && (PTDate->curClockTime.handMin == PTDate->oldClockTime.handMin)
+                  && (PTDate->curClockTime.handHour == PTDate->oldClockTime.handHour));
+            break;
+        }
 
-                hBmp = CreateCompatibleBitmap(hdc,
-                                              pClockData->cxClient,
-                                              pClockData->cyClient);
-                if (hBmp)
+        case (WM_PAINT):
+        {
+            RECT rc;
+            
+            GetClientRect(GetParent(hWnd), &rc);
+            InvalidateRect(GetParent(hWnd), &rc, TRUE);
+            BeginPaint(hWnd, &ps);
+            SetClockTimes(&(PTDate->curClockTime), PTDate);
+            DrawClockFace(ps.hdc, PTDate);
+            DrawHands(ps.hdc, PTDate, TRUE);
+            EndPaint(hWnd, &ps);
+            break;
+        }
+
+        case (WM_DESTROY):
+        {
+            if (PTDate)
+            {
+                if (PTDate->bTimer)
                 {
-                    RECT rcParent;
-                    HWND hParentWnd = GetParent(hwnd);
-                    INT oldMap, Radius;
-                    POINT oldOrg;
-
-                    hBmpOld = SelectObject(hdcMem, hBmp);
-
-                    SetRect(&rcParent, 0, 0, pClockData->cxClient, pClockData->cyClient);
-                    MapWindowPoints(hwnd, hParentWnd, (POINT*)&rcParent, 2);
-                    OffsetViewportOrgEx(hdcMem, -rcParent.left, -rcParent.top, &oldOrg);
-                    SendMessage(hParentWnd, WM_PRINT, (WPARAM)hdcMem, PRF_ERASEBKGND | PRF_CLIENT);
-                    SetViewportOrgEx(hdcMem, oldOrg.x, oldOrg.y, NULL);
-
-                    oldMap = SetMapMode(hdcMem, MM_ISOTROPIC);
-                    SetWindowExtEx(hdcMem, 3600, 2700, NULL);
-                    SetViewportExtEx(hdcMem, 800, -600, NULL);
-                    SetViewportOrgEx(hdcMem,
-                                     pClockData->cxClient / 2,
-                                     pClockData->cyClient / 2,
-                                     &oldOrg);
-
-                    Radius = DrawClock(hdcMem, pClockData);
-                    DrawHands(hdcMem, &pClockData->stPrevious, TRUE, Radius);
-
-                    SetMapMode(hdcMem, oldMap);
-                    SetViewportOrgEx(hdcMem, oldOrg.x, oldOrg.y, NULL);
-
-                    BitBlt(hdc,
-                           0,
-                           0,
-                           pClockData->cxClient,
-                           pClockData->cyClient,
-                           hdcMem,
-                           0,
-                           0,
-                           SRCCOPY);
-
-                    SelectObject(hdcMem, hBmpOld);
-                    DeleteObject(hBmp);
+                    KillTimer(hWnd, ID_CLOCK_TIMER);
+                    PTDate->bTimer = FALSE;
                 }
-
-                DeleteDC(hdcMem);
+                RemoveClockObject(PTDate);
             }
-
-            EndPaint(hwnd, &ps);
+            HeapFree(GetProcessHeap(), 0, PTDate);
+            SetWindowPtr(hWnd, 0, PTDate);
             break;
+        }
 
-        /* No need to erase background, handled during paint */
-        case WM_ERASEBKGND:
-            return 1;
-
-        case WM_DESTROY:
-            DeleteObject(pClockData->hGreyPen);
-            DeleteObject(pClockData->hGreyBrush);
-
-            if (pClockData->bTimer)
-                KillTimer(hwnd, ID_TIMER);
-
-            HeapFree(GetProcessHeap(), 0, pClockData);
-            break;
-
-        case CLM_STOPCLOCK:
-            if (pClockData->bTimer)
+        case (CLM_STOPCLOCK):
+        {
+            if (PTDate->bTimer)
             {
-                KillTimer(hwnd, ID_TIMER);
-                pClockData->bTimer = FALSE;
+                KillTimer(hWnd, ID_CLOCK_TIMER);
+                PTDate->bTimer = FALSE;
             }
             break;
+        }
 
-        case CLM_STARTCLOCK:
-            if (!pClockData->bTimer)
+        case (CLM_STARTCLOCK):
+        {
+            if (!PTDate->bTimer)
             {
-                SYSTEMTIME LocalTime;
+                SYSTEMTIME st = {0};
+                
+                RtlZeroMemory(&st, sizeof(SYSTEMTIME));
+                GetTimes(&st);
+                SetClockTimes(&(PTDate->curClockTime),PTDate);
+                PTDate->bTimer =(SetTimer(hWnd, ID_CLOCK_TIMER, ID_CLOCK_MSEC, 0L) != 0);
 
-                GetLocalTime(&LocalTime);
-                pClockData->bTimer = (SetTimer(hwnd, ID_TIMER, 1000 - LocalTime.wMilliseconds, NULL) != 0);
+                hDC = GetDC(hWnd);
+                DrawClockFace(hDC, PTDate);
+                DrawHands(hDC, PTDate, FALSE);
+                ReleaseDC(hWnd, hDC);
             }
             break;
+        }
+
+        case (CLM_UPDATECLOCK):
+        {
+            SetClockTimes(&(PTDate->curClockTime), PTDate);
+            hDC = GetDC(hWnd);
+            DrawClockFace(hDC, PTDate);
+            DrawHands(hDC, PTDate, FALSE);
+            ReleaseDC(hWnd, hDC);
+            break;
+        }
 
         default:
-            DefWindowProcW(hwnd,
-                           uMsg,
-                           wParam,
-                           lParam);
+        {
+            return (DefWindowProcW(hWnd, message, wParam, lParam));
+        }
     }
-
-    return TRUE;
+    return (0);
 }
-
 
 BOOL
 RegisterClockControl(VOID)
 {
     WNDCLASSEXW wc = {0};
-
+    
     wc.cbSize = sizeof(WNDCLASSEXW);
-    wc.lpfnWndProc = ClockWndProc;
+    wc.cbClsExtra = 0;
+    wc.cbWndExtra = sizeof(PTDDATAOBJ);
     wc.hInstance = hApplet;
     wc.hCursor = LoadCursorW(NULL, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
+    wc.hbrBackground = NULL;
+    wc.lpszMenuName = NULL;
     wc.lpszClassName = szClockWndClass;
-
-    return RegisterClassExW(&wc) != (ATOM)0;
+    wc.style = CS_VREDRAW | CS_HREDRAW;
+    wc.lpfnWndProc = ClockWndProc;
+    
+    return (RegisterClassExW(&wc) != (ATOM)0);
 }
-
 
 VOID
 UnregisterClockControl(VOID)
