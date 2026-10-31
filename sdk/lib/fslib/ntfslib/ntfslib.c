@@ -650,16 +650,40 @@ NtfsChkdsk(
         NtfsFormatReport(Callback, "Checking file records, indexes and the volume bitmap...\n");
         Status = NtfsVolumeCheck(Volume, Locked, NtfsCheckReport, &Check, &Result);
     }
-    if (NT_SUCCESS(Status) && Locked && Dirty && Result.Errors == 0)
+    /*
+     * Every successful repair-capable check must leave the volume's dirty
+     * flag in a known state. Do not gate this on the initial Dirty probe:
+     * FSCTL_IS_VOLUME_DIRTY and the on-disk $Volume flag can disagree, and
+     * a forced CHKDSK pass may start with a clean FSCTL result.
+     *
+     * Only clear the flag when the volume is locked, the check completed,
+     * and no consistency errors remain. Never clear it after a read-only,
+     * failed, or incomplete pass.
+     */
+    if (NT_SUCCESS(Status) && FixErrors && Locked && Result.Errors == 0)
     {
-        /* Clear the on-disk $Volume dirty bit only after a clean repair pass. */
         Status = NtfsVolumeSetFlags(Volume, 0, VOL_DIRTY);
         if (NT_SUCCESS(Status))
         {
             Status = NtfsVolumeQueryFlags(Volume, &VerifyFlags);
             if (NT_SUCCESS(Status) && (VerifyFlags & VOL_DIRTY))
             {
-                NtfsFormatReport(Callback, "The NTFS dirty flag remains set after repair.\n");
+                NtfsFormatReport(Callback,
+                                 "The NTFS $Volume dirty flag remains set after CHKDSK.\n");
+                Status = STATUS_DISK_CORRUPT_ERROR;
+            }
+        }
+        if (NT_SUCCESS(Status))
+        {
+            DirtyMask = 0;
+            Status = NtfsCheckControl(Handle,
+                                      FSCTL_IS_VOLUME_DIRTY,
+                                      &DirtyMask,
+                                      sizeof(DirtyMask));
+            if (NT_SUCCESS(Status) && (DirtyMask & VOLUME_IS_DIRTY))
+            {
+                NtfsFormatReport(Callback,
+                                 "NTFS still reports the volume dirty after CHKDSK.\n");
                 Status = STATUS_DISK_CORRUPT_ERROR;
             }
         }
