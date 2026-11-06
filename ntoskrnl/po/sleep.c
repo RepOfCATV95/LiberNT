@@ -708,7 +708,8 @@ PopSleepSystem(
     PopSleepCallWin32(PowerState_SuspendApps, SystemAction, SystemState, Flags);
     PopSleepCallWin32(PowerState_SuspendServices, SystemAction, SystemState, Flags);
 
-    if (NT_SUCCESS(IopGetSystemPowerDeviceObject(&PowerPdo)))
+    Status = IopGetSystemPowerDeviceObject(&PowerPdo);
+    if (NT_SUCCESS(Status))
     {
         PowerDevice = IoGetAttachedDeviceReference(PowerPdo);
         if (PowerDevice == PowerPdo)

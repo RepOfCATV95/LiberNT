@@ -4,7 +4,7 @@ LANGUAGE LANG_JAPANESE, SUBLANG_DEFAULT
 
 IDD_SETUPFRAME DIALOGEX 0, 0, 420, 240
 STYLE DS_SHELLFONT | DS_MODALFRAME | WS_MINIMIZEBOX | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
-CAPTION "LiberNT Setup"
+CAPTION "CATV 95 LiberNT Setup"
 FONT 8, "MS Shell Dlg"
 BEGIN
     LTEXT "", IDC_FRAME_TITLE, 120, 10, 290, 14, SS_NOPREFIX
@@ -124,7 +124,7 @@ END
 
 IDD_RESIZE DIALOGEX 0, 0, 300, 170
 STYLE DS_SHELLFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "Shrink"
+CAPTION "縮む"
 FONT 8, "MS Shell Dlg"
 BEGIN
     LTEXT "", IDC_RESIZE_LABEL_TOTAL, 7, 13, 190, 8
@@ -137,41 +137,41 @@ BEGIN
     LTEXT "", IDC_RESIZE_LABEL_AFTER, 7, 70, 190, 8
     EDITTEXT IDC_RESIZE_AFTER, 203, 67, 90, 13, ES_READONLY | ES_AUTOHSCROLL | NOT WS_TABSTOP
     ICON "", IDC_RESIZE_ICON, 8, 85, 10, 10, SS_ICON | SS_REALSIZEIMAGE
-    LTEXT "You cannot shrink a volume beyond the point where any unmovable files are located.", IDC_RESIZE_NOTE, 25, 86, 268, 26
+    LTEXT "移動できないファイルが存在する位置を超えて、ボリュームを縮小することはできません。", IDC_RESIZE_NOTE, 25, 86, 268, 26
     DEFPUSHBUTTON "", IDOK, 180, 149, 54, 14
-    PUSHBUTTON "Cancel", IDCANCEL, 239, 149, 54, 14
+    PUSHBUTTON "キャンセル", IDCANCEL, 239, 149, 54, 14
 END
 
 /* Strings */
 
 STRINGTABLE
 BEGIN
-    IDS_SHRINK_CAPTION "Shrink %s"
-    IDS_EXTEND_CAPTION "Extend %s"
+    IDS_SHRINK_CAPTION "縮む %s"
+    IDS_EXTEND_CAPTION "伸ばす %s"
     IDS_SHRINK_TOTAL "Total size before shrink in MB:"
     IDS_SHRINK_AVAILABLE "Size of available shrink space in MB:"
     IDS_SHRINK_AMOUNT "&Enter the amount of space to shrink in MB:"
     IDS_SHRINK_AFTER "Total size after shrink in MB:"
-    IDS_SHRINK_BUTTON "&Shrink"
+    IDS_SHRINK_BUTTON "縮小 (&S)"
     IDS_EXTEND_TOTAL "Total size before extend in MB:"
     IDS_EXTEND_AVAILABLE "Size of available space in MB:"
     IDS_EXTEND_AMOUNT "&Enter the amount of space to add in MB:"
     IDS_EXTEND_AFTER "Total size after extend in MB:"
-    IDS_EXTEND_BUTTON "E&xtend"
+    IDS_EXTEND_BUTTON "拡張 (&X)"
     IDS_RESIZE_PENDING "Partition changes are waiting to be applied. Shrink and extend take effect immediately, so do them before creating, deleting or formatting partitions."
-    IDS_RESIZE_FAILED "The partition could not be resized."
-    IDS_CAPTION "LiberNT セットアップ"
+    IDS_RESIZE_FAILED "パーティションのサイズを変更できませんでした。"
+    IDS_CAPTION "CATV 95 共和国セットアップ"
     IDS_DRIVETITLE "インストール先パーティションとシステムフォルダをセットアップします"
     IDS_PROCESSTITLE "パーティションをセットアップし、ファイルをコピーし、システムをセットアップします"
     IDS_PROCESSSUBTITLE "パーティションを作成・フォーマットし、ファイルをコピーし、ブートローダをインストール・セットアップします。"
-    IDS_ABORTSETUP "LiberNT はあなたのコンピュータへのインストールが完了していません。もしセットアップをここで中断すれば、LiberNT をインストールするために、セットアップを再起動する必要があります。本当に中断しますか?"
+    IDS_ABORTSETUP "CATV 95 共和国はあなたのコンピュータへのインストールが完了していません。もしセットアップをここで中断すれば、CATV 95 をインストールするために、セットアップを再起動する必要があります。本当に中断しますか?"
     IDS_ABORTSETUP2 "インストールを中断しますか?"
     IDS_NO_TXTSETUP_SIF "'txtsetup.sif'が見つかりません。\nセットアップは続行できません。"
     IDS_FINISH_NO_REBOOT "Setup needs to restart your computer to continue with the second installation step.\n\nClick on Restart to immediately restart your computer.\nClick on Postpone to quit the installer and restart your computer at a later time."
     IDS_ABORT_NO_REBOOT "Click on Restart to immediately restart your computer.\nClick on Close to quit the installer."
     IDS_INSTALLBTN "インストール(&I)"
-    IDS_RESTARTBTN "&Restart"
-    IDS_POSTPONEBTN "&Postpone"
+    IDS_RESTARTBTN "再起動 (&R)"
+    IDS_POSTPONEBTN "延期 (&P)"
 END
 
 /* Setup window */
@@ -265,7 +265,7 @@ BEGIN
     IDS_APPS_COL_NAME "Component"
     IDS_APPS_COL_SOURCE "Downloaded from"
     IDS_APPS_INSTALLED "%s (インストール済み)"
-    IDS_OOBE_FINISHTITLE "Getting LiberNT ready"
+    IDS_OOBE_FINISHTITLE "Getting CATV 95 LiberNT ready"
     IDS_OOBE_FINISHSUBTITLE "This can take a few minutes. Keep your computer on."
     IDS_OOBE_APPLY_REGION "Applying your language and keyboard..."
     IDS_OOBE_APPLY_TIMEZONE "Setting the time zone..."
@@ -275,18 +275,18 @@ BEGIN
     IDS_OOBE_INSTALLING "Installing %s..."
     IDS_OOBE_APP_FAILED "%s: %s (%s)"
     IDS_OOBE_APPS_FAILED "Some components were not installed"
-    IDS_OOBE_ACCOUNT_FAILED "LiberNT could not create your account (error %lu). LiberNT signs in to the built-in User account instead."
+    IDS_OOBE_ACCOUNT_FAILED "CATV 95 LiberNT could not create your account (error %lu). CATV 95 LiberNT signs in to the built-in User account instead."
     IDS_OOBE_UNKNOWN_ERROR "Unknown error"
     IDS_OOBE_STORAGETITLE "Use all of your storage"
-    IDS_OOBE_STORAGESUBTITLE "LiberNT can grow drive C: to fill the storage device it runs from."
+    IDS_OOBE_STORAGESUBTITLE "CATV 95 LiberNT can grow drive C: to fill the storage device it runs from."
     IDS_OOBE_STORAGE_INFO "Drive C: is %I64u MB with %I64u MB free. The rest of the storage device is not used yet."
-    IDS_OOBE_EXPAND_RESTART "LiberNT restarts to expand drive C:"
+    IDS_OOBE_EXPAND_RESTART "CATV 95 LiberNT restarts to expand drive C:"
     IDS_OOBE_EXPAND_RESTART_TEXT "Drive C: grows to fill the storage device, then LiberNT restarts. This setup opens again after the restart."
-    IDS_OOBE_EXPAND_FAILED "LiberNT could not expand drive C: (lntexpandstorage exit code %lu). Setup continues; you can try again later with lntexpandstorage in Command Prompt."
+    IDS_OOBE_EXPAND_FAILED "CATV 95 LiberNT could not expand drive C: (lntexpandstorage exit code %lu). Setup continues; you can try again later with lntexpandstorage in Command Prompt."
     IDS_OOBE_APPS_SPACE "The selected components need about %lu MB. Drive C: has %I64u MB free."
     IDS_OOBE_APPS_NOSPACE "Not enough free space for the selected components"
     IDS_OOBE_APPS_NOSPACE_TEXT "They need about %lu MB, and drive C: has %I64u MB free. Clear some boxes to continue. To install them later, expand drive C: with lntexpandstorage in Command Prompt, then run %%SystemRoot%%\\system32\\oobe\\oobe.exe /components."
-    IDS_OOBE_INSTALL_DRIVERS "Installing drivers for your devices..."
+    IDS_OOBE_INSTALL_DRIVERS "デバイスのドライバーをインストールしています..."
 END
 
 /* Progress Strings */
@@ -311,7 +311,7 @@ BEGIN
 
     IDS_CREATE_REGISTRY "レジストリを作成しています..."
 
-    // IDS_INSTALL_FINALIZE "Finalizing the installation..."
+    // IDS_INSTALL_FINALIZE "インストールを完了しています..."
     IDS_INSTALL_BOOTLOADER "ブートローダーをインストールしています..."
 END
 
@@ -330,17 +330,17 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_ACCOUNTTITLE "Name your computer and create your account"
-    IDS_CONFIGURE_SYSTEM "Configuring LiberNT..."
-    IDS_CONFIG_FOLDERS "Creating the system and profile folders"
-    IDS_CONFIG_DEVICES "Installing the device classes"
-    IDS_CONFIG_NETWORK "Installing the network protocols"
-    IDS_CONFIG_SETTINGS "Applying the computer settings"
-    IDS_CONFIG_COMPONENTS "Registering the components"
-    IDS_CONFIG_SHORTCUTS "Creating the Start menu shortcuts"
-    IDS_CONFIG_SECURITY "Applying the security settings"
-    IDS_CONFIG_ACCOUNT "Creating your account"
-    IDS_CONFIG_FINISH "Saving the configuration"
+    IDS_ACCOUNTTITLE "コンピュータに名前を付け、アカウントを作成します"
+    IDS_CONFIGURE_SYSTEM "CATV 95 共和国を構成しています..."
+    IDS_CONFIG_FOLDERS "システムフォルダーとプロファイルフォルダーの作成"
+    IDS_CONFIG_DEVICES "デバイスクラスのインストール"
+    IDS_CONFIG_NETWORK "ネットワークプロトコルのインストール"
+    IDS_CONFIG_SETTINGS "コンピューターの設定を適用しています"
+    IDS_CONFIG_COMPONENTS "コンポーネントの登録"
+    IDS_CONFIG_SHORTCUTS "スタートメニューのショートカットを作成する"
+    IDS_CONFIG_SECURITY "セキュリティ設定を適用しています"
+    IDS_CONFIG_ACCOUNT "設定の保存"
+    IDS_CONFIG_FINISH "設定の保存"
     IDS_ERROR_COMPUTERNAME "The computer name must have 1 to 15 letters, digits or hyphens, and cannot contain only digits."
     IDS_ERROR_USERNAME "The user name must have 1 to 20 characters and cannot contain any of these characters:\n"" / \\ [ ] : ; | = , + * ? < > @\nIt cannot contain only periods and spaces."
     IDS_ERROR_USEREXISTS "This name is already used by a built-in account or group, or by the computer. Choose another user name."
@@ -381,22 +381,22 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_TYPETITLE "Installation type"
-    IDS_TYPESUBTITLE "Choose how LiberNT shares this computer."
+    IDS_TYPETITLE "設置タイプ"
+    IDS_TYPESUBTITLE "CATV 95 LiberNT がこのコンピュータをどのように共有するかを選択してください。"
     IDS_TYPE_FOUND "This computer has %s on %s."
-    IDS_TYPE_ALONGSIDE "Install LiberNT &alongside %s"
+    IDS_TYPE_ALONGSIDE "Install CATV 95 LiberNT &alongside %s"
     IDS_TYPE_SPLITSIZE "%s: %s"
     IDS_TYPE_SHRINKNOTE "Drag the slider to share the space. %s keeps its programs and files. Its partition shrinks as soon as you select Next."
     IDS_TYPE_HIBERNATED "%s is hibernated or was shut down with Fast startup, so its partition cannot be resized safely. Start %s, choose Restart from the Start menu, then start Setup again. You can also turn off Fast startup in Control Panel > Power Options."
-    IDS_TYPE_NOSPACE "%s does not have enough free space to make room for LiberNT, which needs at least %I64u GB. Free some space in it, or choose Something else."
-    IDS_TYPE_NORESIZE "The %s partition cannot be resized. Choose Something else to pick another place for LiberNT."
-    IDS_TYPE_PLANNED "%s was resized to %s. LiberNT will be installed in the new %s partition."
-    IDS_TYPE_WARNING "%s starts by default. To start LiberNT, you must open the computer's boot menu while it starts, usually with F12, F11, F9 or Esc, and choose LiberNT Boot Manager. In Windows you can also use Settings > System > Recovery > Advanced startup > Use a device."
-    IDS_TYPE_CONFIRM_TITLE "Resize %s now?"
-    IDS_TYPE_CONFIRM "%s shrinks from %s to %s right away, before the rest of the installation, and LiberNT gets %s. Make sure the files you want to keep are backed up."
+    IDS_TYPE_NOSPACE "%s does not have enough free space to make room for CATV 95 LiberNT, which needs at least %I64u GB. Free some space in it, or choose Something else."
+    IDS_TYPE_NORESIZE "The %s partition cannot be resized. Choose Something else to pick another place for CATV 95 LiberNT."
+    IDS_TYPE_PLANNED "%s は %s にサイズ変更されました。 CATV 95 LiberNT は、新しい%sパーティションにインストールされます。"
+    IDS_TYPE_WARNING "%s starts by default. To start CATV 95 LiberNT, you must open the computer's boot menu while it starts, usually with F12, F11, F9 or Esc, and choose CATV 95 LiberNT Boot Manager. In Windows you can also use Settings > System > Recovery > Advanced startup > Use a device."
+    IDS_TYPE_CONFIRM_TITLE "今すぐ %s のサイズを変更しますか？"
+    IDS_TYPE_CONFIRM "%s shrinks from %s to %s right away, before the rest of the installation, and CATV 95 LiberNT gets %s. Make sure the files you want to keep are backed up."
     IDS_TYPE_WINDOWS11 "Windows 11"
     IDS_TYPE_WINDOWS10 "Windows 10"
     IDS_TYPE_WINDOWS "Windows"
-    IDS_READY_DEFAULTOS "Starts by default: %s"
+    IDS_READY_DEFAULTOS "デフォルトで開始: %s"
     IDS_TYPE_LIBERNT "LiberNT"
 END

@@ -2107,8 +2107,8 @@ HKCU,"AppEvents\Schemes\Apps\.Default\SystemExclamation",,0x00000012
 HKCU,"AppEvents\Schemes\Apps\.Default\SystemExclamation\.Current","",0x00020000,""
 HKCU,"AppEvents\Schemes\Apps\.Default\SystemExclamation\.Default","",0x00020000,""
 HKCU,"AppEvents\Schemes\Apps\.Default\SystemExit",,0x00000012
-HKCU,"AppEvents\Schemes\Apps\.Default\SystemExit\.Current","",0x00020000,""
-HKCU,"AppEvents\Schemes\Apps\.Default\SystemExit\.Default","",0x00020000,""
+HKCU,"AppEvents\Schemes\Apps\.Default\SystemExit\.Current","",0x00020000,"%SystemRoot%\media\LiberNT_Shutdown.wav"
+HKCU,"AppEvents\Schemes\Apps\.Default\SystemExit\.Default","",0x00020000,"%SystemRoot%\media\LiberNT_Shutdown.wav"
 HKCU,"AppEvents\Schemes\Apps\.Default\SystemHand",,0x00000012
 HKCU,"AppEvents\Schemes\Apps\.Default\SystemHand\.Current","",0x00020000,""
 HKCU,"AppEvents\Schemes\Apps\.Default\SystemHand\.Default","",0x00020000,""
@@ -2119,15 +2119,15 @@ HKCU,"AppEvents\Schemes\Apps\.Default\SystemQuestion",,0x00000012
 HKCU,"AppEvents\Schemes\Apps\.Default\SystemQuestion\.Current","",0x00020000,""
 HKCU,"AppEvents\Schemes\Apps\.Default\SystemQuestion\.Default","",0x00020000,""
 HKCU,"AppEvents\Schemes\Apps\.Default\SystemStart",,0x00000012
-HKCU,"AppEvents\Schemes\Apps\.Default\SystemStart\.Current","",0x00020000,"%SystemRoot%\media\ReactOS_Startup.wav"
-HKCU,"AppEvents\Schemes\Apps\.Default\SystemStart\.Default","",0x00020000,"%SystemRoot%\media\ReactOS_Startup.wav"
+HKCU,"AppEvents\Schemes\Apps\.Default\SystemStart\.Current","",0x00020000,"%SystemRoot%\media\LiberNT_Startup.wav"
+HKCU,"AppEvents\Schemes\Apps\.Default\SystemStart\.Default","",0x00020000,"%SystemRoot%\media\LiberNT_Startup.wav"
 HKCU,"AppEvents\Schemes\Apps\.Default\WindowsLogoff",,0x00000012
 HKCU,"AppEvents\Schemes\Apps\.Default\WindowsLogoff\.Current","",0x00020000,""
 HKCU,"AppEvents\Schemes\Apps\.Default\WindowsLogoff\.Default","",0x00020000,""
 HKCU,"AppEvents\Schemes\Apps\.Default\WindowsLogon",,0x00000012
 HKCU,"AppEvents\Schemes\Apps\.Default\WindowsLogon\.Current","",0x00020000,""
 HKCU,"AppEvents\Schemes\Apps\.Default\WindowsLogon\.Default","",0x00020000,""
-HKCU,"AppEvents\Schemes\Apps\Explorer","",0x00000002,"ReactOS Explorer"
+HKCU,"AppEvents\Schemes\Apps\Explorer","",0x00000002,"LiberNT Explorer"
 HKCU,"AppEvents\Schemes\Apps\Explorer","DispFileName",0x00000000,"@mmsys.cpl,-5854"
 HKCU,"AppEvents\Schemes\Apps\Explorer\EmptyRecycleBin",,0x00000012
 HKCU,"AppEvents\Schemes\Apps\Explorer\EmptyRecycleBin\.Current","",0x00020000,""

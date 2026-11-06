@@ -643,9 +643,11 @@ WinLdrHiberValidateRanges(VOID)
     for (Index = 0; Index < Header->RangeCount; Index++)
     {
         Range = &WinLdrHiber.Ranges[Index];
+        /* Validate the start before subtracting, avoiding overflow in end-page checks. */
         if (Range->PageCount == 0 ||
             Range->BasePage < NextPage ||
-            Range->BasePage + Range->PageCount > Header->HighestPage ||
+            Range->BasePage >= Header->HighestPage ||
+            (ULONG64)Range->PageCount > Header->HighestPage - Range->BasePage ||
             (Range->Class != LNT_HIBER_RANGE_DATA && Range->Class != LNT_HIBER_RANGE_ZERO))
         {
             return FALSE;

@@ -481,13 +481,49 @@ CheckVolume(
                                                     ChkdskCallback,
                                                     TRUE,  // FixErrors
                                                     TRUE,  // Verbose
-                                                    CheckOnlyIfDirty,
+                                                    FALSE, // Run the repair pass unconditionally
                                                     FALSE, // ScanDrive
                                                     NULL,
                                                     NULL,
                                                     NULL,
                                                     NULL,
                                                     (PULONG)&Status);
+
+            /*
+             * NTFS must not be considered repaired merely because the repair
+             * routine returned. Re-query its consistency state without making
+             * further changes so AutoChk can report a dirty volume accurately.
+             * The NTFS checker is responsible for clearing the $Volume dirty bit.
+             */
+            if (Success && wcscmp(FileSystem, L"NTFS") == 0)
+            {
+                NTSTATUS VerifyStatus = STATUS_SUCCESS;
+                BOOLEAN VerifySuccess;
+
+                VerifySuccess = NtfsChkdsk(&VolumePathU,
+                                           ChkdskCallback,
+                                           FALSE, // FixErrors
+                                           TRUE,  // Verbose
+                                           TRUE,  // CheckOnlyIfDirty
+                                           FALSE, // ScanDrive
+                                           NULL,
+                                           NULL,
+                                           NULL,
+                                           NULL,
+                                           (PULONG)&VerifyStatus);
+
+                if (!VerifySuccess || VerifyStatus == STATUS_DISK_CORRUPT_ERROR)
+                {
+                    PrintString("The NTFS volume %S is still marked dirty after repair.\r\n",
+                                DisplayName);
+                    Status = NT_SUCCESS(VerifyStatus) ? STATUS_DISK_CORRUPT_ERROR : VerifyStatus;
+                    Success = FALSE;
+                }
+                else
+                {
+                    Status = VerifyStatus;
+                }
+            }
         }
         else
         {

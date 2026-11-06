@@ -4,7 +4,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 
 IDD_SETUPFRAME DIALOGEX 0, 0, 420, 240
 STYLE DS_SHELLFONT | DS_MODALFRAME | WS_MINIMIZEBOX | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
-CAPTION "LiberNT Setup"
+CAPTION "CATV 95 LiberNT Setup"
 FONT 8, "MS Shell Dlg"
 BEGIN
     LTEXT "", IDC_FRAME_TITLE, 120, 10, 290, 14, SS_NOPREFIX
@@ -160,7 +160,7 @@ BEGIN
     IDS_EXTEND_BUTTON "E&xtend"
     IDS_RESIZE_PENDING "Partition changes are waiting to be applied. Shrink and extend take effect immediately, so do them before creating, deleting or formatting partitions."
     IDS_RESIZE_FAILED "The partition could not be resized."
-    IDS_CAPTION "LiberNT Setup"
+    IDS_CAPTION "CATV 95 LiberNT Setup"
     IDS_DRIVETITLE "Where do you want to install LiberNT?"
     IDS_PROCESSTITLE "Installing LiberNT"
     IDS_PROCESSSUBTITLE "Setup prepares the disk, copies the files, configures LiberNT and installs the bootloader. This can take a few minutes."
@@ -265,7 +265,7 @@ BEGIN
     IDS_APPS_COL_NAME "Component"
     IDS_APPS_COL_SOURCE "Downloaded from"
     IDS_APPS_INSTALLED "%s (installed)"
-    IDS_OOBE_FINISHTITLE "Getting LiberNT ready"
+    IDS_OOBE_FINISHTITLE "Getting CATV 95 LiberNT ready"
     IDS_OOBE_FINISHSUBTITLE "This can take a few minutes. Keep your computer on."
     IDS_OOBE_APPLY_REGION "Applying your language and keyboard..."
     IDS_OOBE_APPLY_TIMEZONE "Setting the time zone..."
@@ -275,18 +275,18 @@ BEGIN
     IDS_OOBE_INSTALLING "Installing %s..."
     IDS_OOBE_APP_FAILED "%s: %s (%s)"
     IDS_OOBE_APPS_FAILED "Some components were not installed"
-    IDS_OOBE_ACCOUNT_FAILED "LiberNT could not create your account (error %lu). LiberNT signs in to the built-in User account instead."
+    IDS_OOBE_ACCOUNT_FAILED "CATV 95 LiberNT could not create your account (error %lu). CATV 95 LiberNT signs in to the built-in User account instead."
     IDS_OOBE_UNKNOWN_ERROR "Unknown error"
     IDS_OOBE_STORAGETITLE "Use all of your storage"
-    IDS_OOBE_STORAGESUBTITLE "LiberNT can grow drive C: to fill the storage device it runs from."
+    IDS_OOBE_STORAGESUBTITLE "CATV 95 LiberNT can grow drive C: to fill the storage device it runs from."
     IDS_OOBE_STORAGE_INFO "Drive C: is %I64u MB with %I64u MB free. The rest of the storage device is not used yet."
     IDS_OOBE_EXPAND_RESTART "LiberNT restarts to expand drive C:"
     IDS_OOBE_EXPAND_RESTART_TEXT "Drive C: grows to fill the storage device, then LiberNT restarts. This setup opens again after the restart."
-    IDS_OOBE_EXPAND_FAILED "LiberNT could not expand drive C: (lntexpandstorage exit code %lu). Setup continues; you can try again later with lntexpandstorage in Command Prompt."
+    IDS_OOBE_EXPAND_FAILED "CATV 95 LiberNT could not expand drive C: (lntexpandstorage exit code %lu). Setup continues; you can try again later with lntexpandstorage in Command Prompt."
     IDS_OOBE_APPS_SPACE "The selected components need about %lu MB. Drive C: has %I64u MB free."
     IDS_OOBE_APPS_NOSPACE "Not enough free space for the selected components"
     IDS_OOBE_APPS_NOSPACE_TEXT "They need about %lu MB, and drive C: has %I64u MB free. Clear some boxes to continue. To install them later, expand drive C: with lntexpandstorage in Command Prompt, then run %%SystemRoot%%\\system32\\oobe\\oobe.exe /components."
-    IDS_OOBE_INSTALL_DRIVERS "Installing drivers for your devices..."
+    IDS_OOBE_INSTALL_DRIVERS "Installing Republic of CATV 95 drivers for your devices..."
 END
 
 /* Progress Strings */
@@ -382,18 +382,18 @@ END
 STRINGTABLE
 BEGIN
     IDS_TYPETITLE "Installation type"
-    IDS_TYPESUBTITLE "Choose how LiberNT shares this computer."
+    IDS_TYPESUBTITLE "Choose how CATV 95 LiberNT shares this computer."
     IDS_TYPE_FOUND "This computer has %s on %s."
-    IDS_TYPE_ALONGSIDE "Install LiberNT &alongside %s"
+    IDS_TYPE_ALONGSIDE "Install CATV 95 LiberNT &alongside %s"
     IDS_TYPE_SPLITSIZE "%s: %s"
     IDS_TYPE_SHRINKNOTE "Drag the slider to share the space. %s keeps its programs and files. Its partition shrinks as soon as you select Next."
     IDS_TYPE_HIBERNATED "%s is hibernated or was shut down with Fast startup, so its partition cannot be resized safely. Start %s, choose Restart from the Start menu, then start Setup again. You can also turn off Fast startup in Control Panel > Power Options."
-    IDS_TYPE_NOSPACE "%s does not have enough free space to make room for LiberNT, which needs at least %I64u GB. Free some space in it, or choose Something else."
-    IDS_TYPE_NORESIZE "The %s partition cannot be resized. Choose Something else to pick another place for LiberNT."
-    IDS_TYPE_PLANNED "%s was resized to %s. LiberNT will be installed in the new %s partition."
-    IDS_TYPE_WARNING "%s starts by default. To start LiberNT, you must open the computer's boot menu while it starts, usually with F12, F11, F9 or Esc, and choose LiberNT Boot Manager. In Windows you can also use Settings > System > Recovery > Advanced startup > Use a device."
+    IDS_TYPE_NOSPACE "%s does not have enough free space to make room for CATV 95 LiberNT, which needs at least %I64u GB. Free some space in it, or choose Something else."
+    IDS_TYPE_NORESIZE "The %s partition cannot be resized. Choose Something else to pick another place for CATV 95 LiberNT."
+    IDS_TYPE_PLANNED "%s was resized to %s. CATV 95 LiberNT will be installed in the new %s partition."
+    IDS_TYPE_WARNING "%s starts by default. To start CATV 95 LiberNT, you must open the computer's boot menu while it starts, usually with F12, F11, F9 or Esc, and choose CATV 95 LiberNT Boot Manager. In Windows you can also use Settings > System > Recovery > Advanced startup > Use a device."
     IDS_TYPE_CONFIRM_TITLE "Resize %s now?"
-    IDS_TYPE_CONFIRM "%s shrinks from %s to %s right away, before the rest of the installation, and LiberNT gets %s. Make sure the files you want to keep are backed up."
+    IDS_TYPE_CONFIRM "%s shrinks from %s to %s right away, before the rest of the installation, and CATV 95 LiberNT gets %s. Make sure the files you want to keep are backed up."
     IDS_TYPE_WINDOWS11 "Windows 11"
     IDS_TYPE_WINDOWS10 "Windows 10"
     IDS_TYPE_WINDOWS "Windows"

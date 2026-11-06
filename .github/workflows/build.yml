@@ -1,5 +1,6 @@
 name: Build
-on: [push, pull_request]
+on:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -10,8 +11,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - compiler: gcc
-            arch: i386
           - compiler: clang
             arch: amd64
           - compiler: clang
@@ -20,8 +19,6 @@ jobs:
           - compiler: clang
             arch: riscv64
             profile: profile_spacemit_k1
-          - compiler: clang
-            arch: ppc
       fail-fast: false
     runs-on: ubuntu-24.04
     steps:
@@ -159,7 +156,7 @@ jobs:
   build-msvc:
     strategy:
       matrix:
-        arch: [amd64, i386, arm64]
+        arch: [amd64, arm64]
       fail-fast: false
     runs-on: windows-2025
     steps:

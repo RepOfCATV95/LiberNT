@@ -48,13 +48,13 @@ static EVENT_LABEL_ITEM EventLabels[] =
         L"WindowsLogon",
         L"LiberNT Logon",
         IDS_REACTOS_LOGON,
-        L"ReactOS_Logon.wav"
+        L"LiberNT_Logon.wav"
     },
     {
         L"WindowsLogoff",
         L"LiberNT Logoff",
         IDS_REACTOS_LOGOFF,
-        L"ReactOS_Logoff.wav"
+        L"LiberNT_Logoff.wav"
     },
     {
         NULL,

@@ -230,19 +230,19 @@ Severity=Warning
 Facility=System
 SymbolicName=EVENT_EventLogProductInfo
 Language=English
-LiberNT %1 %2 %3 %4.
+CATV 95 LiberNT (Republic of CATV 95) %1 %2 %3 %4.
 .
 Language=Russian
-LiberNT %1 %2 %3 %4.
+CATV 95 LiberNT (Republic of CATV 95) %1 %2 %3 %4.
 .
 Language=French
-LiberNT %1 %2 %3 %4.
+CATV 95 LiberNT (Republic of CATV 95) %1 %2 %3 %4.
 .
 Language=Polish
-LiberNT %1 %2 %3 %4.
+CATV 95 LiberNT (Republic of CATV 95) %1 %2 %3 %4.
 .
 Language=Romanian
-LiberNT %1 %2 %3 %4.
+CATV 95 LiberNT (Republic of CATV 95) %1 %2 %3 %4.
 .
 
 MessageId=6010
@@ -1101,7 +1101,7 @@ usługi %1. Element usługi: %2 jest obecnie w stanie nieprzewidywalnym.
 Jeśli ta konfiguracja nie zostanie naprawiona, ponowne uruchomienie usługi
 %1 może okazać się niemożliwe lub mogą wystąpić inne błędy. Aby upewnić się,
 że usługa jest skonfigurowana właściwie, użyj przystawki Usługi w programie
-ReactOS Management Console (MMC).
+CATV 95 Management Console (MMC).
 .
 Language=Romanian
 Administratorul de control al serviciului a întâlnit o eroare în încercarea de a anula o schimbare de configurație
@@ -1138,7 +1138,7 @@ Language=Polish
 Usługa %1 nie mogła zalogować się jako %2 z aktualnie skonfigurowanym
 hasłem z powodu następującego błędu: %n%3%n%nAby upewnić się, że usługa
 jest skonfigurowana właściwie, użyj przystawki Usługi w programie
-ReactOS Management Console (MMC).
+CATV 95 Management Console (MMC).
 .
 Language=Romanian
 Serviciul %1 nu a putut fi logat la %2 cu parola configurată din prezent,

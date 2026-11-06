@@ -13,6 +13,8 @@
 #include "resource.h"
 #include "inbvgop.h"
 
+extern BOOLEAN ShowProgressBar;
+extern BOOLEAN Win2KHaxor;
 
 #ifndef BI_RGB
 #define BI_RGB 0
@@ -743,7 +745,7 @@ InbvGopLogoStart(
 
 VOID
 NTAPI
-InbvIndicateProgress(VOID)
+InbvGopIndicateProgress(VOID)
 {
     LONG Old, New;
 
@@ -946,6 +948,9 @@ InbvGopCaptureScreen(VOID)
     VID_DISPLAY_INFO DisplayInfo;
     PULONG Pixels;
     SIZE_T Count, i;
+
+    if (Win2KHaxor)
+        return FALSE;
 
     if (InbvBootScreen)
         return TRUE;
@@ -1324,7 +1329,7 @@ InbvGopHandleBootBitmap(VOID)
     ULONG Width, Height;
     BOOLEAN WordmarkDrawn;
 
-    if (!InbvGopQueryInfo(&FbInfo))
+    if (!InbvGopQueryInfo(&FbInfo) || Win2KHaxor)
         return FALSE;
 
     /* Native 32-bit blits use physical dimensions after rotation. */
@@ -1335,14 +1340,15 @@ InbvGopHandleBootBitmap(VOID)
         return FALSE;
 
     InbvSetTextColor(BV_COLOR_WHITE);
-    InbvInstallDisplayStringFilter(InbvGopDisplayFilter);
+    if ( !Win2KHaxor )
+        InbvInstallDisplayStringFilter(InbvGopDisplayFilter);
 
     WordmarkDrawn = InbvGopDrawWordmark(Width, Height, NULL);
     InbvGopLogoStart(Width, Height);
 
     if (!WordmarkDrawn)
     {
-        static const CHAR LoadingMsg[] = "ReactOS";
+        static const CHAR LoadingMsg[] = "LiberNT";
         ULONG CharW;
         ULONG msgPx;
         ULONG x;
@@ -1355,6 +1361,7 @@ InbvGopHandleBootBitmap(VOID)
         VidDisplayStringXY(LoadingMsg, x, y, TRUE);
     }
 
+    ShowProgressBar = FALSE;
     InbvEnableDisplayString(FALSE);
     return TRUE;
 }

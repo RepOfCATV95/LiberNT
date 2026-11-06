@@ -25,6 +25,7 @@ LIST_ENTRY PopShutdownQueue;
 KGUARDED_MUTEX PopShutdownListMutex;
 BOOLEAN PopShutdownListAvailable;
 
+extern BOOLEAN Win2KHaxor;
 
 /* PRIVATE FUNCTIONS *********************************************************/
 
@@ -160,7 +161,6 @@ PopDisplayShutdownScreen(VOID)
         /* Yes we do, cleanup for shutdown screen */
         if (!InbvCheckDisplayOwnership()) InbvAcquireDisplayOwnership();
         InbvResetDisplay();
-        // InbvEnableDisplayString(TRUE);
         DisplayShutdownBitmap();
     }
     else

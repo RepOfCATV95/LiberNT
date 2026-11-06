@@ -3,6 +3,7 @@
  * LICENSE:     GPL-3.0-or-later (https://spdx.org/licenses/GPL-3.0-or-later)
  * PURPOSE:     Hibernation file and image writer
  * COPYRIGHT:   Copyright 2026 Ahmed ARIF <arif.ing@outlook.com>
+ *              Copyright 1997-2028 Republic of CATV 95 <catv95republic@proton.me>
  */
 
 #include <ntoskrnl.h>
@@ -10,6 +11,8 @@
 #include <reactos/hiberfil.h>
 #define NDEBUG
 #include <debug.h>
+
+#include "inbv/logo.h"
 
 #define POP_HIBER_TAG               'bHoP'
 #define POP_HIBER_STAGING_SIZE      (1024 * 1024)
@@ -442,6 +445,37 @@ PopHiberEmitRecord(
     return Status;
 }
 
+/*
+ * @implemented
+ */
+static
+VOID
+PopHiberUpdateProcess(ULONG PCT)
+{
+    ULONG RetPct = 0;
+    CHAR HiberBuf[16];
+
+    RetPct = PCT;
+    if (RetPct == 0 || RetPct>99)
+        return;
+
+    if ( InbvBootDriverInstalled )
+    {
+        InbvUpdateProgressBar(RetPct + 1);
+    }
+    else
+    {
+        RtlStringCbPrintfA(HiberBuf,
+                           sizeof(HiberBuf),
+                           "PopSave: %lu%%\n",
+                           (RetPct + 1));
+        InbvDisplayString(HiberBuf);
+    }
+}
+
+/*
+ * @implemented
+ */
 static
 NTSTATUS
 PopHiberWriteRecords(VOID)
@@ -454,6 +488,7 @@ PopHiberWriteRecords(VOID)
     ULONG Page;
     ULONG Compressed;
     ULONG Tenth = 0;
+    ULONG LastPct = 0;
     PVOID Mapping;
     NTSTATUS Status;
 
@@ -505,11 +540,37 @@ PopHiberWriteRecords(VOID)
             {
                 Tenth = (ULONG)(Written * 10 / PopHiber.DataPages);
                 DPRINT1("Writing the hibernation image: %lu%%\n", Tenth * 10);
+                if ( ((Tenth * 10) + 20) != LastPct )
+                {
+                    LastPct = ((Tenth * 10) + 20);
+                    PopHiberUpdateProcess(LastPct);
+                }
             }
         }
     }
 
     return PopHiberEmitRecord(0, 0, LNT_HIBER_RECORD_END, NULL, 0);
+}
+
+/*
+ * The header is the image commit marker. Invalidate it through the same
+ * direct-storage path as the image writer before overwriting old records.
+ */
+static
+NTSTATUS
+PopHiberWriteInvalidHeader(VOID)
+{
+    NTSTATUS Status;
+
+    RtlZeroMemory(PopHiber.Staging, PAGE_SIZE);
+    PopHiber.StagingFileOffset = 0;
+    PopHiber.StagingUsed = PAGE_SIZE;
+
+    Status = PopHiberFlush();
+    if (!NT_SUCCESS(Status))
+        return Status;
+
+    return PopHiber.Storage.Flush(PopHiber.Storage.Context);
 }
 
 NTSTATUS
@@ -525,6 +586,9 @@ PopHiberSystemHandler(
     if (!PopHiber.Prepared || Context != &PopHiber.Context || Context->Target.StubPhysical == 0)
         return STATUS_INVALID_DEVICE_STATE;
 
+    /* Put up hibernating screen as system starts hibernating process */
+    DisplayHibernationScreen();
+
     Status = PopHiber.Storage.Prepare(PopHiber.Storage.Context);
     if (!NT_SUCCESS(Status))
         return Status;
@@ -535,9 +599,14 @@ PopHiberSystemHandler(
 
     PopHiber.ExtentIndex = 0;
     PopHiber.ExtentStartVcn = PopHiber.Extents->StartingVcn.QuadPart;
+
+    /* Do not leave an old valid header pointing at records being overwritten. */
+    Status = PopHiberWriteInvalidHeader();
+    if (!NT_SUCCESS(Status))
+        return Status;
+
     PopHiber.StagingUsed = 0;
     PopHiber.StagingFileOffset = PAGE_SIZE;
-
     PopHiber.RecordLength = 0;
     Status = PopHiberAppend(PopHiber.Ranges, (ULONG)(PopHiber.RangeCount * sizeof(LNT_HIBER_RANGE)));
     if (NT_SUCCESS(Status))
@@ -586,9 +655,20 @@ PopHiberSystemHandler(
     PopHiber.StagingUsed = PAGE_SIZE;
     Status = PopHiberFlush();
     if (!NT_SUCCESS(Status))
+    {
+        (VOID)PopHiberWriteInvalidHeader();
         return Status;
+    }
 
-    return PopHiber.Storage.Flush(PopHiber.Storage.Context);
+    Status = PopHiber.Storage.Flush(PopHiber.Storage.Context);
+    if (!NT_SUCCESS(Status))
+    {
+        /* A failed commit flush must not intentionally leave a valid header. */
+        (VOID)PopHiberWriteInvalidHeader();
+        return Status;
+    }
+
+    return STATUS_SUCCESS;
 }
 
 static
@@ -761,6 +841,153 @@ PopHiberReadPolicy(
 
 static
 NTSTATUS
+PopHiberQueryExtents(VOID)
+{
+    PRETRIEVAL_POINTERS_BUFFER Batch;
+    PRETRIEVAL_POINTERS_BUFFER Combined = NULL;
+    PRETRIEVAL_POINTERS_BUFFER NewCombined;
+    STARTING_VCN_INPUT_BUFFER StartingVcn;
+    IO_STATUS_BLOCK IoStatus;
+    ULONG BatchSize = POP_HIBER_EXTENT_BUFFER;
+    ULONG BatchCount;
+    ULONG TotalCount = 0;
+    ULONG CapacityCount = 0;
+    ULONG RequiredCount;
+    ULONG NewCapacity;
+    ULONG HeaderSize = FIELD_OFFSET(RETRIEVAL_POINTERS_BUFFER, Extents);
+    SIZE_T NewBytes;
+    LONGLONG NextVcn;
+    NTSTATUS Status;
+
+    Batch = ExAllocatePoolWithTag(NonPagedPool, BatchSize, POP_HIBER_TAG);
+    if (Batch == NULL)
+        return STATUS_INSUFFICIENT_RESOURCES;
+
+    StartingVcn.StartingVcn.QuadPart = 0;
+    for (;;)
+    {
+        RtlZeroMemory(Batch, BatchSize);
+        RtlZeroMemory(&IoStatus, sizeof(IoStatus));
+        Status = ZwFsControlFile(PopHiber.FileHandle, NULL, NULL, NULL, &IoStatus,
+                                 FSCTL_GET_RETRIEVAL_POINTERS,
+                                 &StartingVcn, sizeof(StartingVcn), Batch, BatchSize);
+
+        if (!NT_SUCCESS(Status) && Status != STATUS_BUFFER_OVERFLOW && Status != STATUS_BUFFER_TOO_SMALL)
+            goto Failure;
+
+        BatchCount = Batch->ExtentCount;
+        if (BatchCount == 0)
+        {
+            /* Some file systems return no runs when the output buffer is too small. */
+            if (Status != STATUS_BUFFER_OVERFLOW && Status != STATUS_BUFFER_TOO_SMALL)
+            {
+                Status = STATUS_FILE_CORRUPT_ERROR;
+                goto Failure;
+            }
+            if (BatchSize >= 1024 * 1024 || BatchSize > MAXULONG / 2)
+            {
+                Status = STATUS_INSUFFICIENT_RESOURCES;
+                goto Failure;
+            }
+            BatchSize *= 2;
+            ExFreePoolWithTag(Batch, POP_HIBER_TAG);
+            Batch = ExAllocatePoolWithTag(NonPagedPool, BatchSize, POP_HIBER_TAG);
+            if (Batch == NULL)
+            {
+                Status = STATUS_INSUFFICIENT_RESOURCES;
+                goto Failure;
+            }
+            continue;
+        }
+
+        if (Batch->StartingVcn.QuadPart != StartingVcn.StartingVcn.QuadPart)
+        {
+            Status = STATUS_FILE_CORRUPT_ERROR;
+            goto Failure;
+        }
+
+        if (BatchCount > MAXULONG - TotalCount)
+        {
+            Status = STATUS_INSUFFICIENT_RESOURCES;
+            goto Failure;
+        }
+        RequiredCount = TotalCount + BatchCount;
+        if (RequiredCount > CapacityCount)
+        {
+            NewCapacity = CapacityCount ? CapacityCount : 256;
+            while (NewCapacity < RequiredCount)
+            {
+                if (NewCapacity > MAXULONG / 2)
+                {
+                    NewCapacity = RequiredCount;
+                    break;
+                }
+                NewCapacity *= 2;
+            }
+            if (NewCapacity > (MAXULONG - HeaderSize) / sizeof(Combined->Extents[0]))
+            {
+                Status = STATUS_INSUFFICIENT_RESOURCES;
+                goto Failure;
+            }
+            NewBytes = HeaderSize + (SIZE_T)NewCapacity * sizeof(Combined->Extents[0]);
+            NewCombined = ExAllocatePoolWithTag(NonPagedPool, NewBytes, POP_HIBER_TAG);
+            if (NewCombined == NULL)
+            {
+                Status = STATUS_INSUFFICIENT_RESOURCES;
+                goto Failure;
+            }
+            if (Combined != NULL)
+            {
+                RtlCopyMemory(NewCombined, Combined, HeaderSize + (SIZE_T)TotalCount * sizeof(Combined->Extents[0]));
+                ExFreePoolWithTag(Combined, POP_HIBER_TAG);
+            }
+            else
+            {
+                NewCombined->StartingVcn = Batch->StartingVcn;
+            }
+            Combined = NewCombined;
+            CapacityCount = NewCapacity;
+        }
+
+        RtlCopyMemory(&Combined->Extents[TotalCount], Batch->Extents,
+                      (SIZE_T)BatchCount * sizeof(Batch->Extents[0]));
+        TotalCount = RequiredCount;
+        Combined->ExtentCount = TotalCount;
+
+        NextVcn = Batch->Extents[BatchCount - 1].NextVcn.QuadPart;
+        if (NextVcn <= StartingVcn.StartingVcn.QuadPart)
+        {
+            Status = STATUS_FILE_CORRUPT_ERROR;
+            goto Failure;
+        }
+
+        if (Status == STATUS_SUCCESS)
+            break;
+
+        StartingVcn.StartingVcn.QuadPart = NextVcn;
+    }
+
+    ExFreePoolWithTag(Batch, POP_HIBER_TAG);
+    if (Combined == NULL || TotalCount == 0 || Combined->StartingVcn.QuadPart != 0)
+    {
+        if (Combined != NULL)
+            ExFreePoolWithTag(Combined, POP_HIBER_TAG);
+        return STATUS_FILE_CORRUPT_ERROR;
+    }
+
+    PopHiber.Extents = Combined;
+    return STATUS_SUCCESS;
+
+Failure:
+    if (Batch != NULL)
+        ExFreePoolWithTag(Batch, POP_HIBER_TAG);
+    if (Combined != NULL)
+        ExFreePoolWithTag(Combined, POP_HIBER_TAG);
+    return Status;
+}
+
+static
+NTSTATUS
 PopHiberOpenFile(
     _In_ ULONG64 Size)
 {
@@ -768,7 +995,6 @@ PopHiberOpenFile(
     FILE_VALID_DATA_LENGTH_INFORMATION ValidData;
     FILE_FS_SIZE_INFORMATION SizeInfo;
     PARTITION_INFORMATION_EX PartitionInfo;
-    STARTING_VCN_INPUT_BUFFER StartingVcn;
     OBJECT_ATTRIBUTES ObjectAttributes;
     IO_STATUS_BLOCK IoStatus;
     LARGE_INTEGER AllocationSize;
@@ -905,16 +1131,7 @@ PopHiberOpenFile(
         goto Failure;
     }
 
-    PopHiber.Extents = ExAllocatePoolWithTag(NonPagedPool, POP_HIBER_EXTENT_BUFFER, POP_HIBER_TAG);
-    if (PopHiber.Extents == NULL)
-    {
-        Status = STATUS_INSUFFICIENT_RESOURCES;
-        goto Failure;
-    }
-
-    StartingVcn.StartingVcn.QuadPart = 0;
-    Status = ZwFsControlFile(PopHiber.FileHandle, NULL, NULL, NULL, &IoStatus, FSCTL_GET_RETRIEVAL_POINTERS,
-                             &StartingVcn, sizeof(StartingVcn), PopHiber.Extents, POP_HIBER_EXTENT_BUFFER);
+    Status = PopHiberQueryExtents();
     if (!NT_SUCCESS(Status))
         goto Failure;
 
@@ -989,11 +1206,21 @@ PopHiberReserve(
 
     KeWaitForSingleObject(&PopHiber.Lock, Executive, KernelMode, FALSE, NULL);
 
+    PopHiberReadPolicy(&Enabled, &Percent);
+
     if (!Enable)
     {
         Status = PopHiberDeleteFile();
         KeReleaseMutex(&PopHiber.Lock, FALSE);
         return Status;
+    }
+
+    /* The registry policy must also gate direct SystemReserveHiberFile requests. */
+    if (!Enabled)
+    {
+        Status = PopHiberDeleteFile();
+        KeReleaseMutex(&PopHiber.Lock, FALSE);
+        return NT_SUCCESS(Status) ? STATUS_NOT_SUPPORTED : Status;
     }
 
     if (PopHiber.Ready)
@@ -1002,7 +1229,6 @@ PopHiberReserve(
         return STATUS_SUCCESS;
     }
 
-    PopHiberReadPolicy(&Enabled, &Percent);
     Size = ALIGN_UP_BY((ULONG64)MmNumberOfPhysicalPages * PAGE_SIZE * Percent / 100, 1024 * 1024);
     Status = PopHiberOpenFile(Size);
     if (!NT_SUCCESS(Status))
