@@ -1562,11 +1562,14 @@ Phase1InitializationDiscard(IN PVOID Context)
                  (strstr(CommandLine, "NOGUIBOOT") != NULL ||
                   strstr(CommandLine, "DEBUGPORT=SCREEN") != NULL));
 
-    /* Get the SOS setting */
-    SosEnabled = (CommandLine && strstr(CommandLine, "SOS") != NULL);
-
     /* Look for BOOTVID fallback */
-    Win2KHaxor = (CommandLine && strstr(CommandLine, "COME_HOME_TO_ABC") != NULL);
+    Win2KHaxor = (CommandLine && (strstr(CommandLine, "COME_HOME_TO_ABC") != NULL ||
+                                  strstr(CommandLine, "BOOTVID=BOOTVID.DLL") != NULL));
+
+    /* Get the SOS setting */
+    SosEnabled = (CommandLine && strstr(CommandLine, "SOS") != NULL && (Win2KHaxor));
+
+
 
     /* Setup the boot video driver */
     InbvEnableBootDriver(!NoGuiBoot);
@@ -1576,8 +1579,16 @@ Phase1InitializationDiscard(IN PVOID Context)
     if (!NoGuiBoot)
     {
         /* It is, display the boot logo and enable printing strings */
-        InbvEnableDisplayString(SosEnabled);
-        DisplayBootBitmap(SosEnabled);
+        if (!Win2KHaxor)
+        {
+            InbvEnableDisplayString(FALSE);
+            DisplayGopBootBitmap();
+        }
+        else
+        {
+            InbvEnableDisplayString(SosEnabled);
+            DisplayBootBitmap(SosEnabled);
+        }
     }
     else
     {
@@ -2213,7 +2224,7 @@ Phase1InitializationDiscard(IN PVOID Context)
     InbvUpdateProgressBar(100);
 
     /* Clear the screen */
-    if (InbvBootDriverInstalled) FinalizeBootLogo();
+    if (InbvBootDriverInstalled && !Win2KHaxor) FinalizeBootLogo();
 
     /* Allow strings to be displayed */
     InbvEnableDisplayString(TRUE);

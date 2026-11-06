@@ -43,20 +43,8 @@ typedef enum _BBLT_HORZ_ALIGNMENT
 
 extern ULONG ProgressBarLeft, ProgressBarTop;
 extern BOOLEAN ShowProgressBar;
-extern BOOLEAN Win2KHaxor;
 
 #ifdef INBV_ROTBAR_IMPLEMENTED
-
-/* Specifies on how kernel calls BOOTVID to display a boot screen based on LOGO_TYPE */
-typedef enum _LOGO_TYPE
-{
-    LOGO_UNSPECIFIED,
-    LOGO_PETRO,
-    LOGO_WHISTLER
-} LOGO_TYPE;
-
-/* Windows 8+ boot animation variables */
-static LOGO_TYPE LogoSelections = LOGO_UNSPECIFIED;
 
 /* DPCs */
 static KDPC BootAnimDpc;
@@ -330,7 +318,6 @@ BootAnimTickProgressBar(
 }
 
 #ifdef INBV_ROTBAR_IMPLEMENTED
-
 static
 VOID
 NTAPI
@@ -345,12 +332,6 @@ InbvRotationThread(
     UNREFERENCED_PARAMETER(Context);
     UNREFERENCED_PARAMETER(SystemArgument1);
     UNREFERENCED_PARAMETER(SystemArgument2);
-
-    if (LogoSelections == LOGO_WHISTLER)
-    {
-        KeCancelTimer(&BootAnimTimer);
-        return;
-    }
 
     InbvCheckDisplayOwnership();
     if (InbvGetDisplayState() == INBV_DISPLAY_STATE_OWNED)
@@ -411,20 +392,9 @@ DisplayFilter(
 
         /* Turn off hacks */
         NoNT4 = TRUE;
-		
-#ifdef INBV_ROTBAR_IMPLEMENTED
-        /*
-         * If Windows 8+ GOP-styled boot screen is shown in NT6+ builds without BOOTVID fallback, then
-         * halt the boot animation, change logo type to Windows 2000 and do the rest before entering an AUTOCHK (text-mode) screen
-         */
-        if ( LogoSelections == LOGO_WHISTLER )
-        {
-            LogoSelections = LOGO_PETRO;
-        }
-#endif
 
         /* Avoid drawing progress bar while in process of entering text-mode boot screen */
-        if ( !BootSeqEntered && !Win2KHaxor )
+        if ( !BootSeqEntered )
             BootSeqEntered = TRUE;
 
         /* If ReactOS 0.2.x boot screen is shown in Embedded edition or RISC-V version of CATV 95 LiberNT, then clear the flag first */
@@ -442,39 +412,31 @@ DisplayFilter(
 CODE_SEG("INIT")
 VOID
 NTAPI
+DisplayGopBootBitmap(VOID)
+{
+    BOOLEAN HasGop = FALSE;
+    
+    HasGop = InbvGopHandleBootBitmap();
+    if ( !HasGop )
+    {
+        /* Jump into legacy VGA boot if GOP framebuffer fails to load or graphicsmodedisabled is set to 'yes' */
+        DisplayBootBitmap(FALSE);
+        return;
+    }
+}
+
+CODE_SEG("INIT")
+VOID
+NTAPI
 DisplayBootBitmap(
     _In_ BOOLEAN TextMode)
 {
+    PUCHAR Header = NULL;
+    PUCHAR Screen = NULL;
     static BOOLEAN FirstCall = TRUE;
-    static BOOLEAN HasGOP = FALSE;
-#ifdef INBV_ROTBAR_IMPLEMENTED
-    LOGO_TYPE TempLogoSel = LOGO_UNSPECIFIED;
-#endif
-
-    /* If not using fallback, jump straight to GOP boot screen */
-    if ( !Win2KHaxor )
-        HasGOP = InbvGopHandleBootBitmap();
-    else
-        HasGOP = FALSE;
-
-    if ( HasGOP )
-    {
-#ifdef INBV_ROTBAR_IMPLEMENTED
-        TempLogoSel = LOGO_WHISTLER;
-        LogoSelections = TempLogoSel;
-#endif
-        return;
-    }
-
-#ifdef INBV_ROTBAR_IMPLEMENTED
-    TempLogoSel = LOGO_PETRO;
-    LogoSelections = TempLogoSel;
-#endif
 
     if (TextMode)
     {
-        PUCHAR Header = NULL;
-
         InTextMode = TRUE;
         if ( Haxor )
             Haxor = FALSE;
@@ -497,7 +459,7 @@ DisplayBootBitmap(
         else
         {
             /* Server - Get resources */
-			Header = InbvGetResourceAddress(IDB_SERVER_HEADER);
+            Header = InbvGetResourceAddress(IDB_SERVER_HEADER);
         }
 
         /* Set the scrolling region */
@@ -531,15 +493,13 @@ DisplayBootBitmap(
         {
             /* Fill the color blocks representing the progress bar */
             InbvSolidColorFill(237,443,401,443,BV_COLOR_BLUE);
-			InbvSolidColorFill(237,454,401,454,BV_COLOR_WHITE);
-			InbvSolidColorFill(237,443,237,454,BV_COLOR_BLUE);
-			InbvSolidColorFill(401,443,401,454,BV_COLOR_WHITE);
+            InbvSolidColorFill(237,454,401,454,BV_COLOR_WHITE);
+            InbvSolidColorFill(237,443,237,454,BV_COLOR_BLUE);
+            InbvSolidColorFill(401,443,401,454,BV_COLOR_WHITE);
         }
     }
     else
     {
-        PUCHAR Screen = NULL;
-
         InTextMode = FALSE;
 
         /* Is the boot driver installed? */
@@ -607,14 +567,6 @@ DisplayBootBitmap(
         InbvInstallDisplayStringFilter(DisplayFilter);
     }
 
-    if ( HasGOP && !Win2KHaxor )
-    {
-        if ( Haxor )
-            Haxor = FALSE;
-        FirstCall = FALSE;
-        return;
-    }
-
     /* Initialize the animation, store the line region to rotate in a global buffer, do the rest and set FirstCall to FALSE */
 #ifdef INBV_ROTBAR_IMPLEMENTED
     AnimBaseProgress = 0;
@@ -641,16 +593,7 @@ VOID
 NTAPI
 FinalizeBootLogo(VOID)
 {
-    if ( Win2KHaxor )
-        return;
-
-    /*
-     * Leave whatever is on screen alone: the boot logo stays up until the
-     * display driver takes the framebuffer over and InbvNotifyDisplayOwnershipLost
-     * fades it out.
-     */
-    if ( LogoSelections != LOGO_PETRO && !Win2KHaxor )
-        InbvGopLogoComplete();
+    InbvGopLogoComplete();
 }
 
 VOID

@@ -45,6 +45,11 @@ BootAnimTickProgressBar(
 CODE_SEG("INIT")
 VOID
 NTAPI
+DisplayGopBootBitmap(VOID);
+
+CODE_SEG("INIT")
+VOID
+NTAPI
 DisplayBootBitmap(
     _In_ BOOLEAN TextMode);
 

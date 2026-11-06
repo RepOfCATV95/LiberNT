@@ -543,6 +543,7 @@ InbvNotifyDisplayOwnershipLost(
         return;
     }
 
+    InbvGopLogoStop();
     if (KeBugCheckActive == 0)
     {
         if (KeGetCurrentIrql() == PASSIVE_LEVEL)

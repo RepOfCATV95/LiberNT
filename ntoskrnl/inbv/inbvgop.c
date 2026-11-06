@@ -14,7 +14,6 @@
 #include "inbvgop.h"
 
 extern BOOLEAN ShowProgressBar;
-extern BOOLEAN Win2KHaxor;
 
 #ifndef BI_RGB
 #define BI_RGB 0
@@ -949,9 +948,6 @@ InbvGopCaptureScreen(VOID)
     PULONG Pixels;
     SIZE_T Count, i;
 
-    if (Win2KHaxor)
-        return FALSE;
-
     if (InbvBootScreen)
         return TRUE;
     if (KeGetCurrentIrql() != PASSIVE_LEVEL ||
@@ -1329,7 +1325,7 @@ InbvGopHandleBootBitmap(VOID)
     ULONG Width, Height;
     BOOLEAN WordmarkDrawn;
 
-    if (!InbvGopQueryInfo(&FbInfo) || Win2KHaxor)
+    if (!InbvGopQueryInfo(&FbInfo))
         return FALSE;
 
     /* Native 32-bit blits use physical dimensions after rotation. */
@@ -1340,8 +1336,7 @@ InbvGopHandleBootBitmap(VOID)
         return FALSE;
 
     InbvSetTextColor(BV_COLOR_WHITE);
-    if ( !Win2KHaxor )
-        InbvInstallDisplayStringFilter(InbvGopDisplayFilter);
+    InbvInstallDisplayStringFilter(InbvGopDisplayFilter);
 
     WordmarkDrawn = InbvGopDrawWordmark(Width, Height, NULL);
     InbvGopLogoStart(Width, Height);
